@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct MaintenanceSection: View {
     @EnvironmentObject var brewManager: HomebrewManager

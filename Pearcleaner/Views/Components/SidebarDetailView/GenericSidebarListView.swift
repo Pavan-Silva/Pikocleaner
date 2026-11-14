@@ -5,7 +5,6 @@
 //  Created as a reusable component extracted from AppSearchView
 //
 
-import AlinFoundation
 import SwiftUI
 
 struct GenericSidebarListView<Item: Identifiable & Hashable, Content: View>: View {
@@ -86,7 +85,8 @@ struct GenericSidebarListView<Item: Identifiable & Hashable, Content: View>: Vie
         }
         .frame(width: sidebarWidth)
         .ifGlassMain()
-        .padding([.leading, .vertical], 8)
+        .padding(.leading, ForkInfo.usesGoldenGateChrome ? 0 : 8)
+        .padding(.vertical, ForkInfo.usesGoldenGateChrome ? 0 : 8)
         .ignoresSafeArea(edges: .top)
         .overlay(alignment: .trailing) {
             // Invisible resize handle on the trailing edge

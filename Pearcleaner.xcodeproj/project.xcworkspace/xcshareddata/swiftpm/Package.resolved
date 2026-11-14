@@ -1,15 +1,6 @@
 {
-  "originHash" : "878acce7c95e9774ee43b058d63510f4ad7a7a3a673f5600c415bcc68aad7c3f",
+  "originHash" : "5cc75cc3e2bc0af79c2e3caa2621a82123b6551e567520a8f67b681990e6ac3e",
   "pins" : [
-    {
-      "identity" : "alinfoundation",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/alienator88/AlinFoundation",
-      "state" : {
-        "branch" : "main",
-        "revision" : "f61241c2ea1856ef41cbfc965afe9d756121456f"
-      }
-    },
     {
       "identity" : "sparkle",
       "kind" : "remoteSourceControl",

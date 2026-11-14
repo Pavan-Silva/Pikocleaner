@@ -7,7 +7,6 @@
 
 import Foundation
 import AppKit
-import AlinFoundation
 
 // Import SearchType from FileSearchView
 enum SearchType: String, CaseIterable {

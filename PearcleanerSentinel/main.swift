@@ -51,7 +51,7 @@ func checkApp(file: String) {
     let appExt = app.pathExtension
     if appExt == "app" {
         if let appBundle = Bundle(url: app) {
-            if appBundle.bundleIdentifier == "com.alienator88.Pearcleaner" {
+            if appBundle.bundleIdentifier == "com.pavansilva.Pearcleaner" {
                 return
             } else {
                 if FileManager.default.isInTrash(app) {

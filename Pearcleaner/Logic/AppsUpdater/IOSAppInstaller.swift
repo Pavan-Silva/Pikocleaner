@@ -7,7 +7,6 @@
 
 import Foundation
 import AppKit
-import AlinFoundation
 
 // MARK: - Supporting Types
 

@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import AlinFoundation
 import ServiceManagement
 
 class HomebrewUninstaller {

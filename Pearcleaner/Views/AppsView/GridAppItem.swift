@@ -5,7 +5,6 @@
 //  Created for grid layout mode
 //
 
-import AlinFoundation
 import Foundation
 import SwiftUI
 

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct UpdateDetailView: View {
     let appId: UUID

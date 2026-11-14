@@ -9,7 +9,6 @@
 import Foundation
 import SwiftUI
 import ServiceManagement
-import AlinFoundation
 
 struct InterfaceSettingsTab: View {
     @EnvironmentObject var appState: AppState
@@ -24,7 +23,6 @@ struct InterfaceSettingsTab: View {
     @AppStorage("settings.interface.minimalist") private var minimalEnabled: Bool = true
     @AppStorage("settings.interface.scrollIndicators") private var scrollIndicators: Bool = false
     @AppStorage("settings.interface.multiSelect") private var multiSelect: Bool = false
-    @AppStorage("settings.interface.greetingEnabled") private var greetingEnabled: Bool = true
     @AppStorage("settings.interface.badgeOverlaysEnabled") private var badgeOverlaysEnabled: Bool = true
     @AppStorage("settings.interface.startupView") private var startupView: Int = CurrentPage.applications.rawValue
     @State private var showPagePopover: Bool = false
@@ -39,26 +37,25 @@ struct InterfaceSettingsTab: View {
                          content: {
                 VStack {
 
-                    if #unavailable(macOS 26.0) {
+                    if #available(macOS 27.0, *) {
+                        // Golden Gate uses the system Liquid Glass appearance; there is
+                        // no per-app effect picker anymore.
                         HStack(spacing: 0) {
-                            Image(systemName: glass ? "cube.transparent" : "cube.transparent.fill")
+                            Image(systemName: "circle.lefthalf.filled")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 15, height: 15)
                                 .padding(.trailing)
                                 .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
                             VStack(alignment: .leading, spacing: 5) {
-                                Text("Transparent sidebar")
+                                Text("Liquid Glass follows System Settings > Appearance")
                                     .font(.callout)
                                     .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
                             }
                             Spacer()
-                            Toggle(isOn: $glass, label: {
-                            })
-                            .toggleStyle(SettingsToggle())
                         }
                         .padding(5)
-                    } else {
+                    } else if #available(macOS 26.0, *) {
                         HStack(spacing: 0) {
                             Image(systemName: "cube.transparent")
                                 .resizable()
@@ -79,6 +76,25 @@ struct InterfaceSettingsTab: View {
                                     .tag("Clear")
                             } label: { EmptyView() }
                                 .buttonStyle(.borderless)
+                        }
+                        .padding(5)
+                    } else {
+                        HStack(spacing: 0) {
+                            Image(systemName: glass ? "cube.transparent" : "cube.transparent.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 15, height: 15)
+                                .padding(.trailing)
+                                .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Transparent sidebar")
+                                    .font(.callout)
+                                    .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+                            }
+                            Spacer()
+                            Toggle(isOn: $glass, label: {
+                            })
+                            .toggleStyle(SettingsToggle())
                         }
                         .padding(5)
                     }
@@ -160,26 +176,6 @@ struct InterfaceSettingsTab: View {
                         }
                         Spacer()
                         Toggle(isOn: $multiSelect, label: {
-                        })
-                        .toggleStyle(SettingsToggle())
-                    }
-                    .padding(5)
-
-
-                    HStack(spacing: 0) {
-                        Image(systemName: greetingEnabled ? "hand.raised.fill" : "hand.raised")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 15, height: 15)
-                            .padding(.trailing)
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(greetingEnabled ? String(localized: "Greeting enabled on main page") : String(localized: "Greeting disabled on main page"))
-                                .font(.callout)
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                        }
-                        Spacer()
-                        Toggle(isOn: $greetingEnabled, label: {
                         })
                         .toggleStyle(SettingsToggle())
                     }

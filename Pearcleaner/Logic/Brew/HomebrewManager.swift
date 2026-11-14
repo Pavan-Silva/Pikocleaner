@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import AlinFoundation
 
 enum InstalledCategory: String, CaseIterable {
     case outdated = "Outdated"

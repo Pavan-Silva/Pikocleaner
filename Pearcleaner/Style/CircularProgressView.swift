@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct CircularProgressView: View {
     let progress: Double // 0.0 to 1.0

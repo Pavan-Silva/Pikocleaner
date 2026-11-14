@@ -6,7 +6,6 @@
 //
 
 import ServiceManagement
-import AlinFoundation
 
 extension Notification.Name {
     static let helperRequired = Notification.Name("helperRequired")
@@ -29,7 +28,7 @@ enum HelperToolAction {
 class HelperToolManager: ObservableObject {
     static let shared = HelperToolManager()
     private var helperConnection: NSXPCConnection?
-    let helperToolIdentifier = "com.alienator88.Pearcleaner.PearcleanerHelper"
+    let helperToolIdentifier = "com.pavansilva.Pearcleaner.PearcleanerHelper"
     @Published var isHelperToolInstalled: Bool = false
     @Published var message: String = String(localized: "Checking...")
     @Published var isInitialCheckComplete: Bool = false
@@ -319,7 +318,7 @@ class HelperToolManager: ObservableObject {
     /// Nuclear reset: Reset BTM (Background Task Management) database to clear desynced helper registrations
     /// This is a last-resort fix for when SMAppService becomes desynced during development
     /// PREREQUISITE: User must manually disable helper in System Settings > Login Items first in certain cases
-    /// Uses AlinFoundation's performPrivilegedCommands() which prompts for password
+    /// Uses performPrivilegedCommands() which prompts for password
     func nuclearResetHelper() async -> Bool {
         printOS("Starting nuclear reset of helper tool...")
 

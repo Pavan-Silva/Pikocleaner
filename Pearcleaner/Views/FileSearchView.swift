@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct FileSearchView: View {
     @EnvironmentObject var appState: AppState
@@ -460,7 +459,7 @@ struct FileSearchView: View {
                 startSearch()
             }
         }
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .pearToolbarBackground()
         .toolbar {
             TahoeToolbarItem(placement: .navigation) {
                 HStack {

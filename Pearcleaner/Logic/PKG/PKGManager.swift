@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import AlinFoundation
 
 @available(macOS 10.5, *)
 class PKGManager {

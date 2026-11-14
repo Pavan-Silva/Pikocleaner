@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct LaunchItem: Identifiable, Hashable, Equatable {
     let id = UUID()
@@ -275,7 +274,7 @@ struct DaemonView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("DaemonViewShouldRefresh"))) { _ in
             refreshLaunchItems()
         }
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .pearToolbarBackground()
         .toolbar {
             TahoeToolbarItem(placement: .navigation) {
                 VStack(alignment: .leading) {

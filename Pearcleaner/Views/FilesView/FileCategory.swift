@@ -8,7 +8,6 @@
 import Foundation
 import SwiftUI
 import AppKit
-import AlinFoundation
 
 // MARK: - FileCategory Enum
 

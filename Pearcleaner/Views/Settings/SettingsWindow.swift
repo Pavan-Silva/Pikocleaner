@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
@@ -24,13 +23,13 @@ struct SettingsView: View {
 
         HStack(spacing: 0) {
             sidebarView
-                .padding(8)
+                .padding(ForkInfo.usesGoldenGateChrome ? 0 : 8)
             detailView
                 .padding(.top)
         }
         .ignoresSafeArea(edges: .top)
         .background(backgroundView(color: ThemeColors.shared(for: colorScheme).primaryBG))
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .pearToolbarBackground()
         .onAppear {
             // Force toolbar refresh by toggling state
             DispatchQueue.main.async {
@@ -100,24 +99,8 @@ struct SettingsView: View {
 //                        #endif
 
                     case .about:
-                        // About tab toolbar item
-                        Button(action: {
-                            NSWorkspace.shared.open(URL(string: "https://github.com/sponsors/alienator88")!)
-                        }, label: {
-                            Label {
-                                Text("Sponsor")
-                                    .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                                    .font(.body)
-                                    .bold()
-                            } icon: {
-                                Image(systemName: "heart")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 16, height: 16)
-                                    .foregroundStyle(.pink)
-                            }
-                            .labelStyle(.titleAndIcon)
-                        })
+                        // No repository-specific actions until this fork has a repo configured.
+                        EmptyView()
 
                     default:
                         // No toolbar items for other tabs

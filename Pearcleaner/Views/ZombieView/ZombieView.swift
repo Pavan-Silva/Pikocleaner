@@ -7,7 +7,6 @@
 
 import Foundation
 import SwiftUI
-import AlinFoundation
 
 struct ZombieView: View {
     @EnvironmentObject var appState: AppState
@@ -330,7 +329,7 @@ struct ZombieView: View {
             // Refresh orphaned files search
             startSearch()
         }
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .pearToolbarBackground()
         .toolbar {
             TahoeToolbarItem(placement: .navigation) {
                 VStack(alignment: .leading){

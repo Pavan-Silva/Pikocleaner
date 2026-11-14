@@ -1,5 +1,4 @@
 import SwiftUI
-import AlinFoundation
 
 // MARK: - Observable Theme Manager
 class ThemeManager: ObservableObject {

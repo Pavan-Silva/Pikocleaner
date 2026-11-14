@@ -8,7 +8,6 @@
 import Foundation
 import SwiftUI
 import FinderSync
-import AlinFoundation
 import UniformTypeIdentifiers
 
 struct GeneralSettingsTab: View {

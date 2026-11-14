@@ -5,7 +5,6 @@
 //  Created by Alin Lupascu on 11/15/24.
 //
 import SwiftUI
-import AlinFoundation
 
 struct PathEnv: Identifiable, Hashable, Equatable {
     let id = UUID()
@@ -383,7 +382,7 @@ struct EnvironmentCleanerView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("DevelopmentViewShouldRefresh"))) { _ in
             refreshPaths()
         }
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .pearToolbarBackground()
         .toolbar {
             TahoeToolbarItem(placement: .navigation) {
                 VStack(alignment: .leading){

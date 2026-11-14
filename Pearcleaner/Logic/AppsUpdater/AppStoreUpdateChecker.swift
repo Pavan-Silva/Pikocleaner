@@ -8,7 +8,6 @@
 import Foundation
 import CommerceKit
 import StoreFoundation
-import AlinFoundation
 
 class AppStoreUpdateChecker {
     private static let logger = UpdaterDebugLogger.shared

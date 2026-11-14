@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct PackageDetailsSidebar: View {
     @Binding var drawerOpen: Bool

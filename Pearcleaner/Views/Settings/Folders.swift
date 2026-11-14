@@ -9,7 +9,6 @@
 import Foundation
 import SwiftUI
 import AppKit
-import AlinFoundation
 
 struct FolderSettingsTab: View {
     @EnvironmentObject var appState: AppState

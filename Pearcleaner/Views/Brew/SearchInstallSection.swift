@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 enum HomebrewSearchType: String, CaseIterable {
     case installed = "Installed"

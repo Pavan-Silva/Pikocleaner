@@ -7,7 +7,6 @@
 
 import Foundation
 import SwiftUI
-import AlinFoundation
 
 
 struct LadderTopRoundedRectangle: InsettableShape {
@@ -556,34 +555,7 @@ func backgroundView(color: Color, glass: Bool = false) -> some View {
 }
 
 
-struct preTahoeSidebar: ViewModifier {
-    @Environment(\.colorScheme) var colorScheme
-    @AppStorage("settings.general.glass") private var glass: Bool = false
-
-    func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            content
-                .background {
-                    LinearGradient(colors: [ThemeColors.shared(for: colorScheme).secondaryBG, ThemeColors.shared(for: colorScheme).primaryBG], startPoint: .leading, endPoint: .trailing)
-                }
-        } else {
-            content
-                .background(backgroundView(color: ThemeColors.shared(for: colorScheme).secondaryBG, glass: glass))
-                .overlay(
-                    Rectangle()
-                        .fill(ThemeColors.shared(for: colorScheme).primaryText.opacity(0.1))
-                        .frame(width: 1)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                )
-        }
-    }
-}
-
-extension View {
-    func preTahoeSidebarBG() -> some View {
-        self.modifier(preTahoeSidebar())
-    }
-}
+// MARK: - Toolbar content
 
 struct TahoeToolbarItem<Content: View>: ToolbarContent {
     var id: String? = nil
@@ -593,14 +565,22 @@ struct TahoeToolbarItem<Content: View>: ToolbarContent {
 
     var body: some ToolbarContent {
         if isGroup {
-            if #available(macOS 26.0, *) {
+            if #available(macOS 27.0, *) {
+                ToolbarItemGroup(placement: placement) { content() }
+            } else if #available(macOS 26.0, *) {
                 ToolbarItemGroup(placement: placement) { content() }
                     .sharedBackgroundVisibility(.hidden)
             } else {
                 ToolbarItemGroup(placement: placement) { content() }
             }
         } else {
-            if #available(macOS 26.0, *) {
+            if #available(macOS 27.0, *) {
+                if let id {
+                    ToolbarItem(id: id, placement: placement) { content() }
+                } else {
+                    ToolbarItem(placement: placement) { content() }
+                }
+            } else if #available(macOS 26.0, *) {
                 if let id {
                     ToolbarItem(id: id, placement: placement) { content() }
                         .sharedBackgroundVisibility(.hidden)
@@ -616,27 +596,6 @@ struct TahoeToolbarItem<Content: View>: ToolbarContent {
                 }
             }
         }
-    }
-}
-
-
-struct ifGlassAvailable: ViewModifier {
-    @AppStorage("settings.general.glassEffect") private var glassEffect: String = "Regular"
-
-    func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            content
-                .glassEffect(glassEffect == "Regular" ? .regular : .clear, in: .rect(cornerRadius: 20))
-        }
-        else {
-            content
-        }
-    }
-}
-
-extension View {
-    func ifGlass() -> some View {
-        self.modifier(ifGlassAvailable())
     }
 }
 
@@ -647,7 +606,15 @@ struct ifGlassAvailableMain: ViewModifier {
     @Environment(\.colorScheme) var colorScheme
 
     func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
+        if #available(macOS 27.0, *) {
+            content
+                .background(.ultraThinMaterial)
+                .overlay(alignment: .trailing) {
+                    Rectangle()
+                        .fill(ThemeColors.shared(for: colorScheme).primaryText.opacity(0.08))
+                        .frame(width: 1)
+                }
+        } else if #available(macOS 26.0, *) {
             content
                 .glassEffect(glassEffect == "Regular" ? .regular : .clear, in: .rect(cornerRadius: 20))
         }
@@ -700,6 +667,12 @@ struct ifGlassAvailableSidebar: ViewModifier {
 extension View {
     func ifGlassSidebar() -> some View {
         self.modifier(ifGlassAvailableSidebar())
+    }
+
+    /// macOS 27 Golden Gate draws a uniform window toolbar; older releases keep
+    /// the transparent toolbar used by the custom glass chrome.
+    func pearToolbarBackground() -> some View {
+        self.toolbarBackground(ForkInfo.usesGoldenGateChrome ? .automatic : .hidden, for: .windowToolbar)
     }
 }
 
@@ -887,6 +860,11 @@ extension NSTextView {
         didSet {
             insertionPointColor = NSColor(.primary.opacity(0.2))  //.clear
         }
+    }
+
+    open override var focusRingType: NSFocusRingType {
+        get { .none }
+        set { }
     }
 }
 

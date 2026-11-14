@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 enum PluginSortOption: String, CaseIterable {
     case name = "Name"
@@ -320,7 +319,7 @@ struct PluginsView: View {
                 .padding([.horizontal, .bottom])
             }
         }
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .pearToolbarBackground()
         .toolbar {
             TahoeToolbarItem(placement: .navigation) {
                 HStack {

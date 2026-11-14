@@ -3105,6 +3105,12 @@
         }
       }
     },
+    "%lld%%" : {
+
+    },
+    "•" : {
+
+    },
     "• Auto-updates" : {
       "localizations" : {
         "de" : {
@@ -3576,6 +3582,9 @@
           }
         }
       }
+    },
+    "⚠️ Warnings" : {
+
     },
     "✅ Installed" : {
       "localizations" : {
@@ -5347,6 +5356,9 @@
           }
         }
       }
+    },
+    "Accessibility permission to allow execution of AppleScript" : {
+
     },
     "Actions" : {
       "localizations" : {
@@ -12440,6 +12452,9 @@
         }
       }
     },
+    "Automation permission to perform delete actions via Finder" : {
+
+    },
     "Available:" : {
       "localizations" : {
         "de" : {
@@ -16811,6 +16826,9 @@
         }
       }
     },
+    "Clear all logs" : {
+
+    },
     "Clear cached credentials immediately" : {
       "localizations" : {
         "de" : {
@@ -17165,6 +17183,9 @@
           }
         }
       }
+    },
+    "Click a log line to individually copy" : {
+
     },
     "Click for apps list" : {
       "extractionState" : "manual",
@@ -18942,6 +18963,9 @@
         }
       }
     },
+    "Console Logs" : {
+
+    },
     "Container" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -19178,6 +19202,9 @@
           }
         }
       }
+    },
+    "Copy all logs" : {
+
     },
     "Copy console output to clipboard" : {
       "localizations" : {
@@ -31707,6 +31734,9 @@
         }
       }
     },
+    "Force Update" : {
+
+    },
     "Forget" : {
       "localizations" : {
         "de" : {
@@ -32652,6 +32682,9 @@
         }
       }
     },
+    "Full Disk permission to access files/folders in system paths" : {
+
+    },
     "Functionality" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -33479,242 +33512,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "玻璃效果"
-          }
-        }
-      }
-    },
-    "Greeting disabled on main page" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Begrüßung auf der Hauptseite deaktiviert"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El saludo está desactivado en la página principal"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Message d'accueil désactivé sur la page principale"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salam dinonaktifkan di halaman utama"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saluto disabilitato nella pagina principale"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "メインページでの挨拶が無効化されています"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "메인 페이지에서 인사말 비활성화됨"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wyłączone powitanie na stronie głównej"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cumprimento desativado na página principal"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saudação desativada na página principal"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Приветствие отключено на главной странице"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pozdrav na hlavnej stránke vypnutý"
-          }
-        },
-        "sl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pozdrav na glavni strani onemogočen"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ana sayfada karşılama devre dışı bırakıldı"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вітання вимкнено на головній сторінці"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chào mừng đã bị tắt trên trang chính"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "主页面问候已禁用"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "主頁已禁用問候語"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "主頁問候語已停用"
-          }
-        }
-      }
-    },
-    "Greeting enabled on main page" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Begrüßung auf der Hauptseite aktiviert"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saludo habilitado en la página principal"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Message d'accueil désactivé sur la page principale"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salam diaktifkan di halaman utama"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saluto abilitato nella pagina principale"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "メインページでの挨拶が有効"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "메인 페이지에서 인사말 활성화"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Włączone powitanie na stronie głównej"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saudação ativada na página principal"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saudação ativada na página principal"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Приветствие включено на главной странице"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pozdrav na hlavnej stránke je povolený"
-          }
-        },
-        "sl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pozdrav omogočen na glavni strani"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ana sayfada karşılama etkinleştirildi"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Привітання увімкнено на головній сторінці"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đã bật câu chào trên trang chính"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "主页问候已启用"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "主頁啟用問候語"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "主頁問候已啟用"
           }
         }
       }
@@ -41403,6 +41200,9 @@
         }
       }
     },
+    "Liquid Glass follows System Settings > Appearance" : {
+      "extractionState" : "manual"
+    },
     "List View" : {
       "localizations" : {
         "de" : {
@@ -43410,125 +43210,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "只有主應用程式位於「應用程式」資料夾時，macOS 才會啟用延伸功能"
-          }
-        }
-      }
-    },
-    "Made with ❤️ by Alin Lupascu" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hergestellt mit ❤️ von Alin Lupascu"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hecho con ❤️ por Alin Lupascu"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fait avec ❤️ par Alin Lupascu"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dibuat dengan ❤️ oleh Alin Lupascu"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fatto con ❤️ da Alin Lupascu"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alin Lupascu による ❤️ 作品"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alin Lupascu의 ❤️로 제작"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stworzone z ❤️ przez Alin Lupascu"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feito com ❤️ por Alin Lupascu"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feito com ❤️ por Alin Lupascu"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сделано с ❤️ от Alin Lupascu"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vytvoril s ❤️ Alin Lupascu"
-          }
-        },
-        "sl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Narejeno z ❤️ , avtor Alin Lupascu"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alin Lupascu tarafından ❤️ ile yapıldı"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Зроблено з ❤️ Alin Lupascu"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Được tạo với ❤️ bởi Alin Lupascu"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "由 Alin Lupascu 用 ❤️ 制作"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "由 Alin Lupascu 用 ❤️ 製作"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "由 Alin Lupascu 用 ❤️ 製作"
           }
         }
       }
@@ -46844,6 +46525,9 @@
         }
       }
     },
+    "No announcement available" : {
+
+    },
     "No apps available for thinning" : {
       "localizations" : {
         "de" : {
@@ -48024,6 +47708,9 @@
           }
         }
       }
+    },
+    "No logs available to view" : {
+
     },
     "No matching casks found. Try manual entry below." : {
       "localizations" : {
@@ -49206,6 +48893,9 @@
         }
       }
     },
+    "No release information" : {
+
+    },
     "No release notes were found" : {
       "localizations" : {
         "de" : {
@@ -50269,6 +49959,9 @@
           }
         }
       }
+    },
+    "No Updates" : {
+
     },
     "Not available" : {
       "extractionState" : "manual",
@@ -55475,6 +55168,9 @@
           }
         }
       }
+    },
+    "Please ignore this testing release, it will be removed shortly" : {
+
     },
     "Please install the helper service" : {
       "localizations" : {
@@ -69071,6 +68767,9 @@
         }
       }
     },
+    "Self-updates are not configured for this build." : {
+
+    },
     "Sentinel Monitor" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -70488,6 +70187,9 @@
           }
         }
       }
+    },
+    "Set repoOwner and repoName in ForkInfo.swift to enable update checks, announcements and release notes." : {
+
     },
     "Settings" : {
       "extractionState" : "manual",
@@ -86933,6 +86635,9 @@
         }
       }
     },
+    "Updates" : {
+
+    },
     "Updates Disabled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -87995,6 +87700,9 @@
           }
         }
       }
+    },
+    "v%@" : {
+
     },
     "Valid cask: %@" : {
       "localizations" : {

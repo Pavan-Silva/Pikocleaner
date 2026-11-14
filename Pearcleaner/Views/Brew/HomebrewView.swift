@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 enum HomebrewViewSection: String, CaseIterable {
     case browse = "Browse"

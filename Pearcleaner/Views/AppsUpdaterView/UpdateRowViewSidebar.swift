@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct UpdateRowViewSidebar: View {
     let app: UpdateableApp

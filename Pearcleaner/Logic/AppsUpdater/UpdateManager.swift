@@ -7,7 +7,6 @@
 
 import Foundation
 import SwiftUI
-import AlinFoundation
 
 @MainActor
 class UpdateManager: ObservableObject {

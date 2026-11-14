@@ -1,137 +1,87 @@
-# Pearcleaner
+# Pearcleaner (personal fork)
 
-### Website
-The only legitimate website owned by me is https://itsalin.com. Anything else offering Pearcleaner downloads is either a scam or not affiliated with me.
-More details [HERE](https://www.reddit.com/r/macapps/comments/1ucstzy/psa_pearcleanercom_is_a_fake_site_pushing_macos/).
+An independent, source-available fork of Pearcleaner — a Mac app uninstaller and
+cleanup utility built with SwiftUI.
 
-### Project Status: On Hold
-> As you may have noticed, development on the app has basically stopped since end of 2025, so I wanted to provide some context.
->
-> Between a new job, joining a friend who is building a SaaS company, and other life priorities, I no longer have the time needed to actively maintain or continue development on the project.
->
-> Another major reason is that I previously relied on my work MacBook for development. After changing jobs, I no longer have access to a Mac device that I can use for personal development work, which means I’m currently unable to build, test, or release updates for the app.
->
-> Because of that, issue responses, feature work, PR reviews, and new releases are effectively on hold indefinitely for now.
->
-> The project is not abandoned entirely, and I’d still like to return to it someday if circumstances change. For now though, I want to be transparent that active development is no longer possible on my end.
->
-> Thank you to everyone who has used the app, reported issues, submitted ideas, or contributed. I genuinely appreciate all of the support the project has received.
+This fork focuses on:
 
-
-<br>
-
-<p align="center">
-<!--    <img src="https://github.com/alienator88/Pearcleaner/assets/91337119/165f6961-f4fc-4199-bc68-580bacff6eaf" align="center" width="128" height="128" /> -->
-   <img src="https://github.com/user-attachments/assets/62cd5fcb-92d3-4d3a-9664-161a7deabd46" align="center" width="160" height="160" />
-
-   <br />
-   <strong>Status: </strong>On Hold
-   <br />
-   <strong>Version: </strong>5.4.3
-   <br />
-   <a href="https://github.com/alienator88/Pearcleaner/releases"><strong>Download</strong></a>
-    · 
-   <a href="https://github.com/alienator88/Pearcleaner/commits">Commits</a>
-  </p>
-</p>
-</br>
-
-
-A free, source-available and fair-code licensed Mac app cleaner inspired by [Freemacsoft's AppCleaner](https://freemacsoft.net/appcleaner/) and [Sun Knudsen's Privacy Guides](https://github.com/sunknudsen/guides/tree/main/archive/how-to-clean-uninstall-macos-apps-using-appcleaner-open-source-alternative) post on his app-cleaner script.
-This project was born out of wanting to learn more on how macOS deals with app installation/uninstallation and getting more Swift experience. If you have suggestions I'm open to hearing them, submit a feature request!
-
-
-### Table of Contents:
-[Features](#features) | [Screenshots](#screenshots) | [Issues](#issues) | [Requirements](#requirements) | [Download](#getting-pearcleaner) | [Translations](#translations) | [License](#license) | [Thanks](#thanks) | [Other Apps](#other-apps)
-
-<br>
-
-
+- Native **macOS 27 Golden Gate** chrome (edge-to-edge sidebar and uniform toolbar),
+  while keeping the existing Tahoe glass look on macOS 26 and the legacy layout on
+  older releases.
+- A fully self-contained build: the UI/updater foundation code lives directly in the
+  app target instead of being pulled from a remote package.
+- No profile/greeting UI, no sponsor links, and no connections to the original
+  project's GitHub repository or update feed.
 
 ## Features
-### Core
-- **App Uninstall • Orphaned File Search • Development Environment Manager • File Search • Homebrew Manager • App Lipo • PKG Manager • Plugin Manager • Services Manager • Apps Updater** 
-- Drag/drop apps, CLI support, and deep link automation [view](https://github.com/alienator88/Pearcleaner/wiki/Deep-Link-Guide)
-- List or Grid view with badges for web/iOS apps
-- Finder Extension for right-click uninstall
-- Pearcleaner self-uninstall and other options
 
-### Utilities
-- Prune unused app translations, keeping only preferred languages
-- Strip unneeded architectures from universal apps without requirement of lipo binary from xcode tools
-- **Sentinel Monitor**: Automatic cleanup when apps hit Trash (~2MB RAM)
-- Export app bundles and file lists
-- Basic Steam games support
-
-### Customization
-- Theme system with custom colors
-- Include/exclude directories for searching
-- Adjustable search sensitivity
-
-## Screenshots
-
-<img src="https://github.com/user-attachments/assets/5095d30c-3665-4b24-bf00-756baac59026" align="left" width="400" />
-<img src="https://github.com/user-attachments/assets/e9841914-613e-4206-b0bd-07963bf27507" align="center" width="400" />
-<p></p>
-<img src="https://github.com/user-attachments/assets/c35258c2-2886-412c-a4c4-3c5e343e7a2c" align="left" width="400" />
-<img src="https://github.com/user-attachments/assets/e6253ce4-b1e4-4851-a2c2-46b1f1e128cb" align="center" width="400" />
-
-
-## Issues
-> [!WARNING]
-> - When submitting issues, please use the appropriate issue template corresponding with your problem [HERE](https://github.com/alienator88/Pearcleaner/issues/new/choose)
-> - Issues with no template will be closed
-> - This is a personal/hobby app, therefore the project is fairly opinionated. Opinion-based requests (e.g., “the layout would look better this way”) will not be considered.
+- **App Uninstall** with orphaned-file search
+- **File Search**, **Homebrew Manager**, **App Lipo**, **PKG Manager**
+- **Plugin Manager**, **Services Manager**, **Apps Updater**
+- Drag and drop apps, CLI support, and deep-link automation
+- Finder extension for right-click uninstall
+- **Sentinel Monitor** for automatic cleanup when apps are moved to the Trash
+- Prune unused app translations and strip unneeded architectures
+- Custom themes, search directories, and search sensitivity
 
 ## Requirements
-> [!NOTE]
-> - Full Disk permission to search for files
-> - Privileged Helper to perform actions on system folders
 
-| macOS Version | Codename | Supported |
-|---------------|----------|-----------|
-| 13.x          | Ventura  | ✅        |
-| 14.x          | Sonoma   | ✅        |
-| 15.x          | Sequoia  | ✅        |
-| 26.x          | Tahoe    | ✅        |
-| TBD           | Beta     | ❌        |
-> Versions prior to macOS 13.0 are not supported due to missing Swift/SwiftUI APIs required by the app.
+- macOS 13.0 or later
+- Full Disk Access to search for files
+- The privileged helper tool to modify system folders
 
-## Getting Pearcleaner
+| macOS | Codename | Supported |
+|-------|----------|-----------|
+| 13.x | Ventura | ✅ |
+| 14.x | Sonoma | ✅ |
+| 15.x | Sequoia | ✅ |
+| 26.x | Tahoe | ✅ |
+| 27.x | Golden Gate | ✅ |
 
-<details>
-  <summary>Releases</summary>
+Versions prior to macOS 13.0 are not supported because the app relies on newer
+Swift and SwiftUI APIs.
 
-Pre-compiled, always up-to-date versions are available from my [releases](https://github.com/alienator88/Pearcleaner/releases) page.
-</details>
+## Building
 
-<details>
-  <summary>Homebrew</summary>
+1. Open `Pearcleaner.xcodeproj` in Xcode 27 or later.
+2. Select the **Pearcleaner Debug** scheme.
+3. Build and run.
 
-You can add the app via Homebrew:
+From the command line:
+
+```sh
+xcodebuild \
+  -project Pearcleaner.xcodeproj \
+  -scheme "Pearcleaner Debug" \
+  -configuration Debug \
+  -derivedDataPath .build/derived \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
+  build
 ```
-brew install --cask pearcleaner
-```
-</details>
 
-## Translations
-If you are able to contribute to translations for the app, please see this discussion: https://github.com/alienator88/Pearcleaner/discussions/137
+### Configuration
+
+Fork-specific settings live in `Pearcleaner/Logic/ForkInfo.swift`:
+
+- `repoOwner` / `repoName` — GitHub repository for this fork. While empty, update
+  checks, announcements, and repository links stay hidden and no network requests
+  are made.
+- `usesGoldenGateChrome` — used internally to switch the macOS 27 chrome.
+
+### Dependencies
+
+- [Sparkle](https://github.com/sparkle-project/Sparkle) for app updates
+- [swift-argument-parser](https://github.com/apple/swift-argument-parser) for the CLI
+- Portions of `Pearcleaner/Foundation` are derived from the MIT-licensed
+  AlinFoundation library (see `THIRD_PARTY_NOTICES.md`)
 
 ## License
-> [!IMPORTANT]
-> Pearcleaner is licensed under Apache 2.0 with [Commons Clause](https://commonsclause.com/). This means that you can do anything you'd like with the source, modify it, contribute to it, etc., but the license explicitly prohibits any form of monetization for Pearcleaner or any modified versions of it. See full license [HERE](https://github.com/alienator88/Pearcleaner/blob/main/LICENSE.md)
 
-## Thanks
+Pearcleaner is licensed under **Apache 2.0 with the Commons Clause**. You may use,
+modify, and redistribute the source, but the license prohibits monetizing
+Pearcleaner or modified versions of it. See [LICENSE.md](LICENSE.md) for the full
+text and attribution.
 
-- Much appreciation to [Freemacsoft's AppCleaner](https://freemacsoft.net/appcleaner/) and [Sun Knudsen's app-cleaner script](https://github.com/sunknudsen/guides/tree/main/archive/how-to-clean-uninstall-macos-apps-using-appcleaner-open-source-alternative) for the inspiration
-- [DharsanB](https://github.com/dharsanb) for sponsoring my Apple Developer account
-
-## Some of my apps
-
-[Pearcleaner](https://github.com/alienator88/Pearcleaner) - An opensource app cleaner with privacy in mind
-
-[Sentinel](https://github.com/alienator88/Sentinel) - A GUI for controlling gatekeeper status on your Mac
-
-[Viz](https://github.com/alienator88/Viz) - Utility for extracting text from images, videos, qr/barcodes
-
-[PearHID](https://github.com/alienator88/PearHID) - Remap your macOS keyboard with a simple SwiftUI frontend
+This fork retains the original copyright and license notices as required. It is
+not affiliated with or endorsed by the original project.

@@ -8,7 +8,6 @@
 
 import Foundation
 import AppKit
-import AlinFoundation
 
 class PasswordRequestHandler {
     static let shared = PasswordRequestHandler()
@@ -22,7 +21,7 @@ class PasswordRequestHandler {
         DistributedNotificationCenter.default().addObserver(
             self,
             selector: #selector(handlePasswordRequest(_:)),
-            name: NSNotification.Name("com.alienator88.Pearcleaner.passwordRequest"),
+            name: NSNotification.Name("com.pavansilva.Pearcleaner.passwordRequest"),
             object: nil
         )
     }
@@ -40,7 +39,7 @@ class PasswordRequestHandler {
 
             // Send response back
             DistributedNotificationCenter.default().postNotificationName(
-                NSNotification.Name("com.alienator88.Pearcleaner.passwordResponse"),
+                NSNotification.Name("com.pavansilva.Pearcleaner.passwordResponse"),
                 object: nil,
                 userInfo: [
                     "requestId": requestId,

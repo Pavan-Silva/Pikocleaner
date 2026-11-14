@@ -5,7 +5,6 @@
 //  Created by Alin Lupascu on 3/20/25.
 //
 
-import AlinFoundation
 import SwiftUI
 
 struct LipoView: View {
@@ -347,7 +346,7 @@ struct LipoView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("LipoViewShouldRefresh"))) { _ in
             refreshList()
         }
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .pearToolbarBackground()
         .toolbar {
             TahoeToolbarItem(placement: .navigation) {
                 VStack(alignment: .leading) {

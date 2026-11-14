@@ -5,7 +5,6 @@
 //  Created by Alin Lupascu on 10/31/23.
 //
 
-import AlinFoundation
 import Foundation
 import ServiceManagement
 import SwiftUI
@@ -798,7 +797,7 @@ func manageFinderPlugin(install: Bool) {
     let task = Process()
     task.launchPath = "/usr/bin/pluginkit"
 
-    task.arguments = ["-e", "\(install ? "use" : "ignore")", "-i", "com.alienator88.Pearcleaner.FinderOpen"]
+    task.arguments = ["-e", "\(install ? "use" : "ignore")", "-i", "com.pavansilva.Pearcleaner.FinderOpen"]
 
     task.launch()
     task.waitUntilExit()
@@ -1366,7 +1365,7 @@ func uninstallPearcleaner(appState: AppState, locations: Locations) {
 
 // --- Load Plist file with SMAppService ---
 func launchctl(load: Bool, completion: @escaping () -> Void = {}) {
-    let service = SMAppService.agent(plistName: "com.alienator88.PearcleanerSentinel.plist")
+    let service = SMAppService.agent(plistName: "com.pavansilva.PearcleanerSentinel.plist")
 
     if load {
         do {
@@ -1460,7 +1459,7 @@ func createTarArchive(appState: AppState) {
             let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
             let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
             throw NSError(
-                domain: "com.alienator88.Pearcleaner.archiveExport",
+                domain: "com.pavansilva.Pearcleaner.archiveExport",
                 code: Int(process.terminationStatus),
                 userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }

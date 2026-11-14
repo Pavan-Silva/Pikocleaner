@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct DeleteHistoryView: View {
     @EnvironmentObject var appState: AppState

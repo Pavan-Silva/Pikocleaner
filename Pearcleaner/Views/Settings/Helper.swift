@@ -7,7 +7,6 @@
 
 import SwiftUI
 import Foundation
-import AlinFoundation
 
 struct HelperSettingsTab: View {
     @Environment(\.colorScheme) var colorScheme

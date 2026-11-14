@@ -5,7 +5,6 @@
 //  Created by Alin Lupascu on 4/26/24.
 //
 
-import AlinFoundation
 import SwiftUI
 
 struct AppSearchView: View {

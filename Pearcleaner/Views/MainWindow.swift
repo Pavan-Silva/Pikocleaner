@@ -5,7 +5,6 @@
 //  Created by Alin Lupascu on 11/5/23.
 //
 
-import AlinFoundation
 import FinderSync
 import Foundation
 import SwiftUI
@@ -373,7 +372,8 @@ struct MainWindow: View {
                 .frame(width: sidebarWidth)
                 .transition(.opacity)
                 .ifGlassMain()
-                .padding([.leading, .vertical], 8)
+                .padding(.leading, ForkInfo.usesGoldenGateChrome ? 0 : 8)
+                .padding(.vertical, ForkInfo.usesGoldenGateChrome ? 0 : 8)
                 .ignoresSafeArea(edges: .top)
 
             // Details View with Console
@@ -399,7 +399,6 @@ struct MainWindow: View {
 }
 
 struct MountedVolumeView: View {
-    @AppStorage("settings.interface.greetingEnabled") private var greetingEnabled: Bool = true
     @Environment(\.colorScheme) var colorScheme
     @ObservedObject private var themeManager = ThemeManager.shared
     @EnvironmentObject var appState: AppState
@@ -419,11 +418,6 @@ struct MountedVolumeView: View {
     var body: some View {
         ZStack(alignment: .center) {
             VStack {
-
-                if greetingEnabled {
-                    ProfileMenuView()
-
-                }
 
                 Spacer()
 
@@ -594,60 +588,6 @@ struct MountedVolumeView: View {
         }
     }
 }
-struct ProfileMenuView: View {
-    @Environment(\.colorScheme) var colorScheme
-    @State private var showMenu = false
-    @State private var profile: UserProfile? = nil
-
-    var body: some View {
-        HStack {
-            Spacer()
-            if let name = profile?.firstName {
-                Text(name.lowercased())
-                    .font(.largeTitle)
-                    .fontWeight(.thin)
-                    .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-            }
-
-            if let image = profile?.image {
-                Button {
-//                    showMenu.toggle()
-                } label: {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 40, height: 40)
-                        .clipShape(Circle())
-                        .overlay {
-                            Circle()
-                                .strokeBorder(
-                                    ThemeColors.shared(for: colorScheme).primaryText,
-                                    lineWidth: 1
-                                )
-                        }
-                }
-                .buttonStyle(.plain)
-                .allowsHitTesting(false)
-//                .popover(isPresented: $showMenu, arrowEdge: .bottom) {
-//                    VStack(alignment: .leading, spacing: 12) {
-//                        Button("Profile Settings") { }
-//                        Button("Switch User") { }
-//                        Divider()
-//                        Button("Log Out", role: .destructive) { }
-//                    }
-//                    .padding()
-//                    .frame(width: 200)
-//                }
-            }
-        }
-        .onAppear {
-            Task {
-                profile = await getUserProfile()
-            }
-        }
-    }
-}
-
 struct VolumeItemView: View {
     let volume: VolumeInfo
     let isCenter: Bool

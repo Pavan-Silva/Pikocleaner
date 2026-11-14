@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct AppsUpdaterView: View {
     @EnvironmentObject var updateManager: UpdateManager

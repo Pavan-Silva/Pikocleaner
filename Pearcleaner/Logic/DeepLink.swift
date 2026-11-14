@@ -7,7 +7,6 @@
 
 import Foundation
 import SwiftUI
-import AlinFoundation
 
 class DeeplinkManager {
     private var urlQueue: [URL] = []

@@ -5,7 +5,6 @@
 //  Created by Alin Lupascu on 8/9/25.
 //
 
-import AlinFoundation
 import SwiftUI
 
 // Break up the sidebar into smaller components

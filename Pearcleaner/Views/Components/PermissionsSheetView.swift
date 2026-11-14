@@ -6,9 +6,8 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
-// MARK: - Local PermissionManager (replaces AlinFoundation version)
+// MARK: - Local PermissionManager
 
 class PermissionManagerLocal: ObservableObject {
     static let shared = PermissionManagerLocal()

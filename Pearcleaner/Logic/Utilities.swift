@@ -7,10 +7,8 @@
 
 import Foundation
 import SwiftUI
-import AlinFoundation
 import AppKit
 import AudioToolbox
-import OpenDirectory
 
 func ifOSBelow(macOS major: Int, _ minor: Int = 0, _ patch: Int = 0) -> Bool {
     if !ProcessInfo.processInfo.isOperatingSystemAtLeast(
@@ -418,63 +416,6 @@ func openAppSettingsWindow(tab: CurrentTabView? = nil, updater: Updater) {
         resizable: false,
         toolbarStyle: .unified
     )
-}
-
-// Get user profile picture
-struct UserProfile {
-    let firstName: String?
-    let image: NSImage?
-}
-
-func getUserProfile() async -> UserProfile {
-    // Use Task.detached to completely break QoS inheritance and escalation
-    // This prevents the system from escalating to match the caller's QoS
-    await Task.detached(priority: .medium) {
-        do {
-            let session = ODSession.default()
-            let node = try ODNode(session: session, type: UInt32(kODNodeTypeLocalNodes))
-            let record = try node.record(
-                withRecordType: kODRecordTypeUsers,
-                name: NSUserName(),
-                attributes: ["dsAttrTypeStandard:RealName",
-                             kODAttributeTypeJPEGPhoto]
-            )
-
-            // First name
-            var firstName: String? = nil
-            if let realName = (try? record.values(forAttribute: "dsAttrTypeStandard:RealName") as? [String])?.first {
-                firstName = realName.components(separatedBy: " ").first
-            }
-
-            // JPEG photo
-            var resizedImage: NSImage? = nil
-            if let dataList = try? record.values(forAttribute: kODAttributeTypeJPEGPhoto) as? [Data],
-               let data = dataList.first,
-               let img = NSImage(data: data) {
-                let targetSize = NSSize(width: 50, height: 50)
-
-                // Pre-render resized image (must run on main thread)
-                // Note: NSImage Sendable conformance requires macOS 14+, but we ensure thread safety via DispatchQueue.main
-                resizedImage = await withCheckedContinuation { continuation in
-                    DispatchQueue.main.async {
-                        let resized = NSImage(size: targetSize, flipped: false) { rect in
-                            img.draw(in: rect,
-                                    from: NSRect(origin: .zero, size: img.size),
-                                    operation: .copy,
-                                    fraction: 1.0)
-                            return true
-                        }
-                        continuation.resume(returning: resized)
-                    }
-                }
-            }
-
-            return UserProfile(firstName: firstName, image: resizedImage)
-        } catch {
-            printOS("Failed fetching user profile: \(error)")
-            return UserProfile(firstName: nil, image: nil)
-        }
-    }.value
 }
 
 // Check if file/folder name has localized variant

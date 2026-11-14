@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct TranslationSelectionSheet: View {
     let appName: String

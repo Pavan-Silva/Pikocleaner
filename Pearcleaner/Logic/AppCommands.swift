@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct AppCommands: Commands {
 
@@ -46,12 +45,14 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut(",", modifiers: .command)
 
-            Button {
-                updater.checkForUpdates(sheet: true, force: true)
-            } label: {
-                Label("Check for Updates", systemImage: "tray.and.arrow.down.fill")
+            if ForkInfo.updatesConfigured {
+                Button {
+                    updater.checkForUpdates(sheet: true, force: true)
+                } label: {
+                    Label("Check for Updates", systemImage: "tray.and.arrow.down.fill")
+                }
+                .keyboardShortcut("u", modifiers: .command)
             }
-            .keyboardShortcut("u", modifiers: .command)
 
             Button {
                 showCustomAlert(
@@ -341,39 +342,43 @@ struct AppCommands: Commands {
 
             Divider()
 
-            // GitHub Menu
-            Button
-            {
-                NSWorkspace.shared.open(URL(string: "https://github.com/alienator88/Pearcleaner")!)
-            } label: {
-                Label("View Repository", systemImage: "paperplane")
-            }
+            // Repository menu (hidden until a repo is configured in ForkInfo.swift)
+            if let repoURL = ForkInfo.repoURL {
+                Button
+                {
+                    ForkInfo.open(repoURL)
+                } label: {
+                    Label("View Repository", systemImage: "paperplane")
+                }
 
+                if let releasesURL = ForkInfo.releasesURL {
+                    Button
+                    {
+                        ForkInfo.open(releasesURL)
+                    } label: {
+                        Label("View Releases", systemImage: "paperplane")
+                    }
+                }
 
-            Button
-            {
-                NSWorkspace.shared.open(URL(string: "https://github.com/alienator88/Pearcleaner/releases")!)
-            } label: {
-                Label("View Releases", systemImage: "paperplane")
-            }
+                if let issuesURL = ForkInfo.issuesURL {
+                    Button
+                    {
+                        ForkInfo.open(issuesURL)
+                    } label: {
+                        Label("View Issues", systemImage: "paperplane")
+                    }
+                }
 
+                Divider()
 
-            Button
-            {
-                NSWorkspace.shared.open(URL(string: "https://github.com/alienator88/Pearcleaner/issues")!)
-            } label: {
-                Label("View Issues", systemImage: "paperplane")
-            }
-
-
-            Divider()
-
-
-            Button
-            {
-                NSWorkspace.shared.open(URL(string: "https://github.com/alienator88/Pearcleaner/issues/new/choose")!)
-            } label: {
-                Label("Submit New Issue", systemImage: "paperplane")
+                if let newIssueURL = ForkInfo.newIssueURL {
+                    Button
+                    {
+                        ForkInfo.open(newIssueURL)
+                    } label: {
+                        Label("Submit New Issue", systemImage: "paperplane")
+                    }
+                }
             }
         }
 

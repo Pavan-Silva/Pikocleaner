@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct ExpandableActionButton: View {
     let primaryAction: ActionButtonItem

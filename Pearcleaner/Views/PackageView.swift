@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 enum PackageSortOption: String, CaseIterable {
     case packageName = "Name"
@@ -235,7 +234,7 @@ struct PackageView: View {
             // Refresh packages
             refreshPackages()
         }
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .pearToolbarBackground()
         .toolbar {
             TahoeToolbarItem(placement: .navigation) {
                 VStack(alignment: .leading) {

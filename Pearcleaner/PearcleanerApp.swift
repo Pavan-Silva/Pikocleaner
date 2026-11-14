@@ -7,7 +7,6 @@
 
 import SwiftUI
 import AppKit
-import AlinFoundation
 
 @main
 struct PearcleanerApp: App {
@@ -19,7 +18,11 @@ struct PearcleanerApp: App {
     //MARK: StateObjects
     @StateObject var locations = Locations()
     @StateObject var fsm = FolderSettingsManager.shared
-    @StateObject private var updater = Updater(owner: "alienator88", repo: "Pearcleaner")
+    @StateObject private var updater = Updater(
+        owner: ForkInfo.repoOwner,
+        repo: ForkInfo.repoName,
+        announcements: ForkInfo.updatesConfigured
+    )
 
     init() {
         //MARK: GUI or CLI launch mode.
@@ -114,7 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         // Open deep link for each app - DeeplinkManager will queue and process them sequentially
         for appURL in appURLs {
-            if let deepLinkURL = URL(string: "pear://com.alienator88.Pearcleaner?path=\(appURL.path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? appURL.path)") {
+            if let deepLinkURL = URL(string: "pear://com.pavansilva.Pearcleaner?path=\(appURL.path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? appURL.path)") {
                 NSWorkspace.shared.open(deepLinkURL)
             }
         }

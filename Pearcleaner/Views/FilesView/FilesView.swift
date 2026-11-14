@@ -5,7 +5,6 @@
 //  Created by Alin Lupascu on 11/1/23.
 //
 
-import AlinFoundation
 import Foundation
 import SwiftUI
 
@@ -134,7 +133,7 @@ struct FilesView: View {
                 showAppInFiles(appInfo: currentAppInfo, appState: appState, locations: locations)
             }
         }
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .pearToolbarBackground()
         .toolbar {
 
             ToolbarItem { Spacer() }

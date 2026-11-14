@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct AboutSettingsTab: View {
     @EnvironmentObject var appState: AppState
@@ -33,44 +32,44 @@ struct AboutSettingsTab: View {
                 }
                 .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
 
-                Text("Made with ❤️ by Alin Lupascu").foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText).font(.footnote)
-
             }
             .padding(.vertical, 50)
 
 
             VStack(spacing: 20) {
-                // GitHub
-                PearGroupBox(header: { Text("Support").foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText).font(.title) }, content: {
-                    HStack{
-                        Image(systemName: "ant")
-                            .resizable()
-                            .scaledToFit()
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                            .frame(width: 20, height: 20)
-                            .padding(.trailing)
-
-                        VStack(alignment: .leading){
-                            Text("Submit a bug or feature request")
-                                .font(.title3)
+                // Repository support links are only shown once this fork has a repository configured.
+                if let newIssueURL = ForkInfo.newIssueURL {
+                    PearGroupBox(header: { Text("Support").foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText).font(.title) }, content: {
+                        HStack{
+                            Image(systemName: "ant")
+                                .resizable()
+                                .scaledToFit()
                                 .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+                                .frame(width: 20, height: 20)
+                                .padding(.trailing)
 
-                        }
-                        Spacer()
-                        Button {
-                            NSWorkspace.shared.open(URL(string: "https://github.com/alienator88/Pearcleaner/issues/new/choose")!)
-                        } label: {
-                            Text("View")
-                        }
-                        .controlSize(.small)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 14)
-                        .controlGroup(Capsule(style: .continuous), level: .primary)
-                    }
+                            VStack(alignment: .leading){
+                                Text("Submit a bug or feature request")
+                                    .font(.title3)
+                                    .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
 
-                })
+                            }
+                            Spacer()
+                            Button {
+                                ForkInfo.open(newIssueURL)
+                            } label: {
+                                Text("View")
+                            }
+                            .controlSize(.small)
+                            .buttonStyle(.plain)
+                            .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 14)
+                            .controlGroup(Capsule(style: .continuous), level: .primary)
+                        }
+
+                    })
+                }
 
                 // Translators
                 PearGroupBox(header: { Text("Translation").foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText).font(.title) }, content: {
@@ -93,18 +92,6 @@ struct AboutSettingsTab: View {
                         }
 
                         Spacer()
-                        Button {
-                            NSWorkspace.shared.open(URL(string: "https://github.com/alienator88/Pearcleaner/discussions/137")!)
-                        } label: {
-                            Text("View")
-                        }
-                        .controlSize(.small)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 14)
-                        .controlGroup(Capsule(style: .continuous), level: .primary)
-
                     }
 
                 })

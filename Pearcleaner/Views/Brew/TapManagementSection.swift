@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AlinFoundation
 
 struct TapManagementSection: View {
     @EnvironmentObject var brewManager: HomebrewManager
