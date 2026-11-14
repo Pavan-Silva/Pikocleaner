@@ -62,6 +62,18 @@ xcodebuild \
   build
 ```
 
+### Unsigned test DMG
+
+To create a Release build in a drag-to-Applications DMG for testing:
+
+```sh
+bash Builds/build-unsigned-dmg.sh
+```
+
+The image is written to `Builds/Export/PikoCleaner-unsigned.dmg`. It is not
+Developer ID signed or notarized, so macOS Gatekeeper warnings are expected.
+This is for testing only, not public distribution.
+
 ### Configuration
 
 Fork-specific settings live in `PikoCleaner/Logic/ForkInfo.swift`:
