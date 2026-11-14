@@ -225,14 +225,6 @@ struct MainWindow: View {
                     .sheet(isPresented: $showFeatureView) {
                         updater.getAnnouncementView()
                     }
-                } else if permissionManager.shouldShowPermissionWarning {
-                    // Permission guidance lives in the bottom-right prompt; the
-                    // toolbar stays free of status indicators.
-                    EmptyView()
-                } else if HelperToolManager.shared.shouldShowHelperBadge {
-                    noticeButton(image: "gear", help: "Helper Not Installed") {
-                        openAppSettingsWindow(tab: .helper, updater: updater)
-                    }
                 }
 
             }
