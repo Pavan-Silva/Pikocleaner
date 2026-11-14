@@ -2748,6 +2748,9 @@
         }
       }
     },
+    "%lld selected items will be moved to Trash." : {
+
+    },
     "%lld service%@" : {
       "localizations" : {
         "de" : {
@@ -14841,6 +14844,7 @@
       }
     },
     "Case sensitive" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14957,6 +14961,9 @@
           }
         }
       }
+    },
+    "Case Sensitive" : {
+
     },
     "Cask not found" : {
       "localizations" : {
@@ -18759,9 +18766,6 @@
           }
         }
       }
-    },
-    "Configure search options" : {
-
     },
     "Confirmation alerts" : {
       "localizations" : {
@@ -28702,6 +28706,9 @@
         }
       }
     },
+    "Exclude System" : {
+
+    },
     "Exclude system folders" : {
       "localizations" : {
         "de" : {
@@ -34160,6 +34167,9 @@
         }
       }
     },
+    "Hidden Files" : {
+
+    },
     "Hide auto-updating apps from Homebrew" : {
       "localizations" : {
         "de" : {
@@ -36525,6 +36535,7 @@
       }
     },
     "Include subfolders" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -36641,6 +36652,9 @@
           }
         }
       }
+    },
+    "Include subfolders in the search" : {
+
     },
     "Info" : {
       "extractionState" : "stale",
@@ -44353,6 +44367,9 @@
         }
       }
     },
+    "Match name capitalization" : {
+
+    },
     "Max Value" : {
       "localizations" : {
         "de" : {
@@ -45419,6 +45436,9 @@
         }
       }
     },
+    "Move %lld Items to Trash" : {
+
+    },
     "Move to Trash" : {
       "localizations" : {
         "de" : {
@@ -45536,6 +45556,9 @@
           }
         }
       }
+    },
+    "Move to Trash?" : {
+
     },
     "Multi-select disabled in sidebar app list" : {
       "extractionState" : "stale",
@@ -75901,6 +75924,9 @@
         }
       }
     },
+    "Subfolders" : {
+
+    },
     "Submit a bug or feature request" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -77445,6 +77471,9 @@
           }
         }
       }
+    },
+    "The selected item will be moved to Trash." : {
+
     },
     "The total space savings between all the lipo'd apps\nSize Before: %@\nSize After: %@" : {
       "comment" : "Lipo completion message",

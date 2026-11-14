@@ -7,6 +7,41 @@
 import AppKit
 import SwiftUI
 
+struct WindowControlInset: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        WindowControlInsetView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+private final class WindowControlInsetView: NSView {
+    private var originalOrigins: [ObjectIdentifier: NSPoint] = [:]
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        adjustWindowControls()
+    }
+
+    override func layout() {
+        super.layout()
+        adjustWindowControls()
+    }
+
+    private func adjustWindowControls() {
+        guard let window else { return }
+
+        let buttons: [NSWindow.ButtonType] = [.closeButton, .miniaturizeButton, .zoomButton]
+        for type in buttons {
+            guard let button = window.standardWindowButton(type) else { continue }
+            let id = ObjectIdentifier(button)
+            let origin = originalOrigins[id] ?? button.frame.origin
+            originalOrigins[id] = origin
+            button.setFrameOrigin(NSPoint(x: origin.x + 6, y: origin.y - 2))
+        }
+    }
+}
+
 public class WindowManager {
     public static let shared = WindowManager()
     private var windows: [String: NSWindow] = [:]

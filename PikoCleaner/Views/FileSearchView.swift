@@ -33,6 +33,8 @@ struct FileSearchView: View {
     @State private var showTagsFilterDialog: Bool = false
     @State private var showCommentFilterDialog: Bool = false
     @State private var showClearConfirmation: Bool = false
+    @State private var showDeleteConfirmation: Bool = false
+    @State private var itemsPendingDeletion: [FileSearchResult] = []
     @State private var searchStartTime: Date?
     @State private var searchElapsedTime: TimeInterval = 0
     @State private var elapsedTimeUpdateTimer: Timer?
@@ -132,25 +134,6 @@ struct FileSearchView: View {
             level: .primary,
             skipControlGroup: true
         ))
-    }
-
-    private var searchOptionsMenu: some View {
-        Menu {
-            Toggle("Include subfolders", isOn: $includeSubfolders)
-                .disabled(searchType == .filesOnly)
-            Toggle("Exclude system folders", isOn: $excludeSystemFolders)
-            Toggle("Include hidden files", isOn: $includeHiddenFiles)
-            Toggle("Case sensitive", isOn: $caseSensitive)
-        } label: {
-            Label("Options", systemImage: "slider.horizontal.3")
-        }
-        .buttonStyle(ControlGroupButtonStyle(
-            foregroundColor: ThemeColors.shared(for: colorScheme).primaryText,
-            shape: Capsule(style: .continuous),
-            level: .primary,
-            skipControlGroup: true
-        ))
-        .help("Configure search options")
     }
 
     private var nameFilterControl: some View {
@@ -293,26 +276,26 @@ struct FileSearchView: View {
 
             // Filter controls
             VStack(alignment: .leading, spacing: 12) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 6) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
                         volumeSelector
                         Divider()
                             .frame(height: 16)
                         searchTypeSelector
                         Divider()
                             .frame(height: 16)
-                        searchOptionsMenu
+                        Toggle("Subfolders", isOn: $includeSubfolders)
+                            .disabled(searchType == .filesOnly)
+                            .help("Include subfolders in the search")
+                        Toggle("Exclude System", isOn: $excludeSystemFolders)
+                            .help("Exclude system folders")
+                        Toggle("Hidden Files", isOn: $includeHiddenFiles)
+                            .help("Include hidden files")
+                        Toggle("Case Sensitive", isOn: $caseSensitive)
+                            .help("Match name capitalization")
                     }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 6) {
-                            volumeSelector
-                            Divider()
-                                .frame(height: 16)
-                            searchTypeSelector
-                        }
-                        searchOptionsMenu
-                    }
+                    .toggleStyle(.checkbox)
+                    .fixedSize(horizontal: true, vertical: false)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -396,7 +379,7 @@ struct FileSearchView: View {
 
                         Divider().frame(height: 16)
 
-                        Button(action: deleteSelectedItems) {
+                        Button(action: requestDeleteSelectedItems) {
                             Label("Delete", systemImage: "trash")
                                 .font(.callout)
                         }
@@ -519,7 +502,7 @@ struct FileSearchView: View {
                 }
                 .onDeleteCommand {
                     if !selectedResults.isEmpty {
-                        deleteSelectedItems()
+                        requestDeleteSelectedItems()
                     }
                 }
                 .contextMenu(forSelectionType: FileSearchResult.ID.self) { items in
@@ -545,7 +528,7 @@ struct FileSearchView: View {
                         }
                         Divider()
                         Button("Delete", role: .destructive) {
-                            deleteFile(result)
+                            requestDeleteFile(result)
                         }
                     }
                 }
@@ -646,6 +629,24 @@ struct FileSearchView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will remove the current results and reset active filters.")
+        }
+        .confirmationDialog(
+            "Move to Trash?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(itemsPendingDeletion.count == 1 ? "Move to Trash" : "Move \(itemsPendingDeletion.count) Items to Trash", role: .destructive) {
+                let items = itemsPendingDeletion
+                itemsPendingDeletion = []
+                performDelete(items)
+            }
+            Button("Cancel", role: .cancel) {
+                itemsPendingDeletion = []
+            }
+        } message: {
+            Text(itemsPendingDeletion.count == 1
+                 ? "The selected item will be moved to Trash."
+                 : "\(itemsPendingDeletion.count) selected items will be moved to Trash.")
         }
         .sheet(isPresented: $showExtensionFilterDialog) {
             ExtensionFilterDialog { type, value in
@@ -837,37 +838,21 @@ struct FileSearchView: View {
         }
     }
 
-    private func deleteFile(_ result: FileSearchResult) {
-        Task {
-            GlobalConsoleManager.shared.appendOutput("Starting deletion of \(result.name)...\n", source: CurrentPage.fileSearch.title)
-            let success = await withCheckedContinuation { continuation in
-                DispatchQueue.global(qos: .userInitiated).async {
-                    let success = FileManagerUndo.shared.deleteFiles(at: [result.url], bundleName: "File Search - \(result.name)")
-                    continuation.resume(returning: success)
-                }
-            }
-
-            await MainActor.run {
-                if success {
-                    GlobalConsoleManager.shared.appendOutput("✓ Completed deletion of \(result.name)\n", source: CurrentPage.fileSearch.title)
-                    // Cache the deleted item before removing
-                    deletedItemsCache.append(result)
-                    results.removeAll { $0.id == result.id }
-                    selectedResults.remove(result.id)
-                } else {
-                    showCustomAlert(
-                        title: "Deletion Failed",
-                        message: "Failed to delete '\(result.name)'. The file may require additional permissions or may not exist.",
-                        style: .critical
-                    )
-                }
-            }
-        }
+    private func requestDeleteFile(_ result: FileSearchResult) {
+        itemsPendingDeletion = [result]
+        showDeleteConfirmation = true
     }
 
-    private func deleteSelectedItems() {
-        let itemsToDelete = results.filter { selectedResults.contains($0.id) }
-        let urlsToDelete = itemsToDelete.map { $0.url }
+    private func requestDeleteSelectedItems() {
+        let items = results.filter { selectedResults.contains($0.id) }
+        guard !items.isEmpty else { return }
+        itemsPendingDeletion = items
+        showDeleteConfirmation = true
+    }
+
+    private func performDelete(_ itemsToDelete: [FileSearchResult]) {
+        guard !itemsToDelete.isEmpty else { return }
+        let urlsToDelete = itemsToDelete.map(\.url)
 
         Task {
             GlobalConsoleManager.shared.appendOutput("Starting deletion of \(itemsToDelete.count) selected file(s)...\n", source: CurrentPage.fileSearch.title)
@@ -882,15 +867,14 @@ struct FileSearchView: View {
             await MainActor.run {
                 if success {
                     GlobalConsoleManager.shared.appendOutput("✓ Completed deletion of \(itemsToDelete.count) file(s)\n", source: CurrentPage.fileSearch.title)
-                    // Cache the deleted items before removing
                     deletedItemsCache.append(contentsOf: itemsToDelete)
-                    let deletedIds = Set(itemsToDelete.map { $0.id })
+                    let deletedIds = Set(itemsToDelete.map(\.id))
                     results.removeAll { deletedIds.contains($0.id) }
-                    selectedResults.removeAll()
+                    selectedResults.subtract(deletedIds)
                 } else {
                     showCustomAlert(
                         title: "Deletion Failed",
-                        message: "Failed to delete some selected files. They may require additional permissions or may not exist.",
+                        message: "Failed to delete the selected item(s). They may require additional permissions or may not exist.",
                         style: .critical
                     )
                 }
