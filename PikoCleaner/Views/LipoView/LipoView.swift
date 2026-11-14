@@ -518,6 +518,10 @@ struct LipoView: View {
                             bundle: UInt64(app.bundleSize), savings: savings
                         )
 
+                        if let index = AppState.shared.sortedApps.firstIndex(where: { $0.path.path == appPath }) {
+                            AppState.shared.sortedApps[index].lipoSavings = Int64(savings)
+                        }
+
                         // Update totals - subtract old savings and add new (likely 0)
                         if savings == 0 {
                             // App was successfully processed and now has 0 savings - it will be filtered out
