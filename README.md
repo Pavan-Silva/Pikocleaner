@@ -1,17 +1,19 @@
-# Pearcleaner (personal fork)
+# Piko Cleaner
 
-An independent, source-available fork of Pearcleaner — a Mac app uninstaller and
-cleanup utility built with SwiftUI.
+Piko Cleaner is a Mac app uninstaller and cleanup utility built with SwiftUI. It is a
+source-available fork of the **Pearcleaner** project, renamed and maintained
+independently.
 
-This fork focuses on:
+## Highlights
 
+- Persistent vertical **activity rail** for switching between tools, with hover
+  labels, a selected state, and an update badge.
 - Native **macOS 27 Golden Gate** chrome (edge-to-edge sidebar and uniform toolbar),
-  while keeping the existing Tahoe glass look on macOS 26 and the legacy layout on
-  older releases.
+  while keeping the Tahoe glass look on macOS 26 and the legacy layout on older
+  releases.
 - A fully self-contained build: the UI/updater foundation code lives directly in the
   app target instead of being pulled from a remote package.
-- No profile/greeting UI, no sponsor links, and no connections to the original
-  project's GitHub repository or update feed.
+- No profile/greeting UI, no sponsor links, and no update feed from another project.
 
 ## Features
 
@@ -43,16 +45,16 @@ Swift and SwiftUI APIs.
 
 ## Building
 
-1. Open `Pearcleaner.xcodeproj` in Xcode 27 or later.
-2. Select the **Pearcleaner Debug** scheme.
+1. Open `PikoCleaner.xcodeproj` in Xcode 27 or later.
+2. Select the **PikoCleaner Debug** scheme.
 3. Build and run.
 
 From the command line:
 
 ```sh
 xcodebuild \
-  -project Pearcleaner.xcodeproj \
-  -scheme "Pearcleaner Debug" \
+  -project PikoCleaner.xcodeproj \
+  -scheme "PikoCleaner Debug" \
   -configuration Debug \
   -derivedDataPath .build/derived \
   CODE_SIGNING_ALLOWED=NO \
@@ -62,26 +64,39 @@ xcodebuild \
 
 ### Configuration
 
-Fork-specific settings live in `Pearcleaner/Logic/ForkInfo.swift`:
+Fork-specific settings live in `PikoCleaner/Logic/ForkInfo.swift`:
 
 - `repoOwner` / `repoName` — GitHub repository for this fork. While empty, update
   checks, announcements, and repository links stay hidden and no network requests
   are made.
 - `usesGoldenGateChrome` — used internally to switch the macOS 27 chrome.
 
+### Command line
+
+The CLI is installed as `piko` in `/usr/local/bin` when enabled in
+Settings ▸ General:
+
+```sh
+piko --help
+piko list-orphaned
+piko uninstall /Applications/SomeApp.app
+```
+
+The app registers the `piko://` URL scheme for automation and Finder services.
+
 ### Dependencies
 
 - [Sparkle](https://github.com/sparkle-project/Sparkle) for app updates
 - [swift-argument-parser](https://github.com/apple/swift-argument-parser) for the CLI
-- Portions of `Pearcleaner/Foundation` are derived from the MIT-licensed
+- Portions of `PikoCleaner/Foundation` are derived from the MIT-licensed
   AlinFoundation library (see `THIRD_PARTY_NOTICES.md`)
 
 ## License
 
-Pearcleaner is licensed under **Apache 2.0 with the Commons Clause**. You may use,
-modify, and redistribute the source, but the license prohibits monetizing
-Pearcleaner or modified versions of it. See [LICENSE.md](LICENSE.md) for the full
-text and attribution.
+The codebase is derived from Pearcleaner and remains licensed under **Apache 2.0
+with the Commons Clause**. You may use, modify, and redistribute the source, but
+the license prohibits monetizing it or modified versions of it. See
+[LICENSE.md](LICENSE.md) for the full text and attribution.
 
 This fork retains the original copyright and license notices as required. It is
 not affiliated with or endorsed by the original project.

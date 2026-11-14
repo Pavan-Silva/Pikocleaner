@@ -1,96 +1,96 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Pearcleaner Uninstall" : {
+    "PikoCleaner Uninstall" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pearcleaner Deinstallation"
+            "value" : "PikoCleaner Deinstallation"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desinstalar Pearcleaner"
+            "value" : "Desinstalar PikoCleaner"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Désinstaller avec Pearcleaner"
+            "value" : "Désinstaller avec PikoCleaner"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hapus Instalasi Pearlcleaner"
+            "value" : "Hapus Instalasi PikoCleaner"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pearcleanerでアンインストール"
+            "value" : "PikoCleanerでアンインストール"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odinstaluj za pomocą Pearcleaner"
+            "value" : "Odinstaluj za pomocą PikoCleaner"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desinstalar o Pearcleaner"
+            "value" : "Desinstalar o PikoCleaner"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Удалить через Pearcleaner"
+            "value" : "Удалить через PikoCleaner"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odinštalovať Pearcleanerom"
+            "value" : "Odinštalovať PikoCleanerom"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pearcleaner ile Kaldırma"
+            "value" : "PikoCleaner ile Kaldırma"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видалити через Pearcleaner"
+            "value" : "Видалити через PikoCleaner"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gỡ cài đặt Pearcleaner"
+            "value" : "Gỡ cài đặt PikoCleaner"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pearcleaner 卸载"
+            "value" : "PikoCleaner 卸载"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pearcleaner 解除安裝"
+            "value" : "PikoCleaner 解除安裝"
           }
         },
         "zh-HK" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pearcleaner 解除安裝"
+            "value" : "PikoCleaner 解除安裝"
           }
         }
       }

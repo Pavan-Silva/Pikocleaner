@@ -2,7 +2,7 @@
 
 ## AlinFoundation
 
-Portions of `Pearcleaner/Foundation` are derived from the MIT-licensed **AlinFoundation**
+Portions of `PikoCleaner/Foundation` are derived from the MIT-licensed **AlinFoundation**
 library.
 
 - Original project: AlinFoundation

@@ -7,15 +7,15 @@ assignees: ''
 ---
 
 <!--
-Thanks for helping make Pearcleaner better! Before you submit your issue, please follow the checklist below and check the appropriate boxes by putting an x inside the [ ]: [x]
+Thanks for helping make Piko Cleaner better! Before you submit your issue, please follow the checklist below and check the appropriate boxes by putting an x inside the [ ]: [x]
 -->
 
 ### New Issue Checklist
 
-- [ ] I updated Pearcleaner to the latest version and still observe the issue
+- [ ] I updated Piko Cleaner to the latest version and still observe the issue
 - [ ] I searched existing issues and found none that describe this bug
 - [ ] macOS Version: [e.g. 27.0]
-- [ ] Pearcleaner Version: [e.g. 4.x.x]
+- [ ] Piko Cleaner Version: [e.g. 4.x.x]
 
 ---
 
@@ -31,7 +31,7 @@ Thanks for helping make Pearcleaner better! Before you submit your issue, please
 ---
 
 <!--
-1. While Pearcleaner is running, push `CMD+D` to open the debug console and show captured logs
+1. While Piko Cleaner is running, push `CMD+D` to open the debug console and show captured logs
 2. If relevant logs are seen in the console, copy them below
 -->
 #### Debug Console
@@ -41,8 +41,8 @@ Thanks for helping make Pearcleaner better! Before you submit your issue, please
 
 <!--
 1. Open the Terminal app and run the following command:
-    log stream --level debug --style compact --predicate 'subsystem == "com.pavansilva.Pearcleaner"'
-2. Launch Pearcleaner to reproduce the startup issue
+    log stream --level debug --style compact --predicate 'subsystem == "com.pavansilva.PikoCleaner"'
+2. Launch Piko Cleaner to reproduce the startup issue
 3. Copy the logs below from Terminal
 -->
 #### Console Logs

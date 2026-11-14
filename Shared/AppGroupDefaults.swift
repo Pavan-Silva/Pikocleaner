@@ -1,6 +1,6 @@
 //
 //  AppGroupDefaults.swift
-//  Pearcleaner
+//  PikoCleaner
 //
 //  Created by Alin Lupascu on 9/30/25.
 //
@@ -8,7 +8,7 @@
 import Foundation
 
 extension UserDefaults {
-    static let appGroup = UserDefaults(suiteName: "group.com.pavansilva.Pearcleaner")!
+    static let appGroup = UserDefaults(suiteName: "group.com.pavansilva.PikoCleaner")!
 
     struct Keys {
         static let showAppIconInMenu = "showAppIconInMenu"

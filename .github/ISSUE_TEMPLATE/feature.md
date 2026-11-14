@@ -7,7 +7,7 @@ assignees: ''
 ---
 
 <!--
-Thanks for helping make Pearcleaner better! Before you submit your request, please check the boxes below by putting an x inside the [ ]: [x]
+Thanks for helping make Piko Cleaner better! Before you submit your request, please check the boxes below by putting an x inside the [ ]: [x]
 -->
 
 ### New Feature Checklist

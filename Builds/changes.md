@@ -7,7 +7,7 @@
 
 ### Fixes
 
-- [x] Fix pear list-orphaned cli command - #472
+- [x] Fix piko list-orphaned cli command - #472
 - [x] Fix owner of receipt to root:wheel for installd workaround - #475
 - [x] Add contentShape around sidebar toggle icons - #485
 - [x] Fix computed property not refreshing action buttons in some cases for Updater view
