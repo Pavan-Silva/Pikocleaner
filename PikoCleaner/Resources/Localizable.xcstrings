@@ -5956,9 +5956,6 @@
         }
       }
     },
-    "Add a search filter" : {
-
-    },
     "Add a tap to get started" : {
       "localizations" : {
         "de" : {
@@ -6076,6 +6073,9 @@
           }
         }
       }
+    },
+    "Add another filter" : {
+
     },
     "Add Comment Filter" : {
       "localizations" : {
@@ -7024,6 +7024,9 @@
           }
         }
       }
+    },
+    "Add name filter" : {
+
     },
     "Add Name Filter" : {
       "localizations" : {
@@ -30830,6 +30833,9 @@
     "Filter by %@" : {
 
     },
+    "Filter by name..." : {
+
+    },
     "Filter files..." : {
       "localizations" : {
         "de" : {
@@ -45887,6 +45893,9 @@
           }
         }
       }
+    },
+    "Name filter" : {
+
     },
     "Name: %@" : {
       "localizations" : {
