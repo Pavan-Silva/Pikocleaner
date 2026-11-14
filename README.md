@@ -74,6 +74,32 @@ The image is written to `Builds/Export/PikoCleaner-unsigned.dmg`. It is not
 Developer ID signed or notarized, so macOS Gatekeeper warnings are expected.
 This is for testing only, not public distribution.
 
+### Self-signed local DMG
+
+To create a Release DMG that is ad-hoc signed locally and includes the
+self-sign/install helper:
+
+```sh
+bash Builds/build-selfsigned-dmg.sh
+```
+
+The image is written to
+`Builds/Export/PikoCleaner-<version>-selfsigned.dmg`. It contains the app, an
+`Applications` shortcut, a README, and `Sign and Install Piko Cleaner.command`.
+
+Double-clicking the command ad-hoc signs the bundled app with `codesign` and
+installs it in `/Applications`. No Apple developer account, certificate, or
+network access is required, so the script works on any Mac. It can also be used
+manually:
+
+```sh
+bash "Sign and Install Piko Cleaner.command" --sign-only /path/to/PikoCleaner.app
+bash "Sign and Install Piko Cleaner.command" --install --force
+```
+
+The app is not Developer ID signed or notarized, so Gatekeeper warnings are
+expected. This is for local use, not for public distribution.
+
 ### Configuration
 
 Fork-specific settings live in `PikoCleaner/Logic/ForkInfo.swift`:
