@@ -33,8 +33,6 @@ struct MainWindow: View {
     // Badges
     @State private var showUpdateView = false
     @State private var showFeatureView = false
-    @State private var showPermissionList = false
-    @State private var glowRadius = 0.0
 
     var body: some View {
 
@@ -126,10 +124,18 @@ struct MainWindow: View {
                 .transition(.opacity)
             }
 
-            // Badge overlay (unified overlay for all badge notifications)
-            BadgeOverlay()
-                .environmentObject(updater)
-                .zIndex(100)
+            // Bottom-right notices. Permission guidance is a single persistent
+            // card; other badge notifications stack above it.
+            VStack(alignment: .trailing, spacing: 12) {
+                BadgeOverlay()
+                    .environmentObject(updater)
+
+                PermissionPrompt()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .padding(20)
+            .animation(animationEnabled ? .easeOut(duration: 0.2) : nil, value: permissionManager.promptVisible)
+            .zIndex(100)
 
         }
         .background(backgroundView(color: ThemeColors.shared(for: colorScheme).primaryBG))
@@ -201,44 +207,25 @@ struct MainWindow: View {
 
                 // Notice Icons
                 if updater.updateAvailable {
-                    noticeButton(
-                        image: "icloud.and.arrow.down.fill",
-                        color: .green,
-                        help: "Update Available"
-                    ) {
+                    noticeButton(image: "arrow.down.circle", help: "Update Available") {
                         showUpdateView.toggle()
                     }
                     .sheet(isPresented: $showUpdateView) {
                         updater.getUpdateView()
                     }
                 } else if updater.announcementAvailable {
-                    noticeButton(
-                        image: "sparkles.2",
-                        color: .purple,
-                        help: "New Feature"
-                    ) {
+                    noticeButton(image: "sparkles", help: "New Feature") {
                         showFeatureView.toggle()
                     }
                     .sheet(isPresented: $showFeatureView) {
                         updater.getAnnouncementView()
                     }
                 } else if permissionManager.shouldShowPermissionWarning {
-                    noticeButton(
-                        image: "lock.slash.fill",
-                        color: .red,
-                        help: "Permissions Missing"
-                    ) {
-                        showPermissionList.toggle()
-                    }
-                    .sheet(isPresented: $showPermissionList) {
-                        PermissionsSheetView()
+                    noticeButton(image: "lock", help: "Missing Permissions") {
+                        permissionManager.presentPrompt()
                     }
                 } else if HelperToolManager.shared.shouldShowHelperBadge {
-                    noticeButton(
-                        image: "gear",
-                        color: .orange,
-                        help: "Helper Not Installed"
-                    ) {
+                    noticeButton(image: "gear", help: "Helper Not Installed") {
                         openAppSettingsWindow(tab: .helper, updater: updater)
                     }
                 }
@@ -263,23 +250,17 @@ struct MainWindow: View {
 
     @ViewBuilder
     private func noticeButton(
-        image: String, color: Color, help: String, action: @escaping () -> Void
+        image: String, help: String, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: image)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(color)
-            }
-            .shadow(color: Color(NSColor.windowBackgroundColor).opacity(1), radius: 1, x: 0, y: 0)
-            .shadow(color: color.opacity(1), radius: glowRadius, x: 0, y: 0)
-            .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: glowRadius)
+            Image(systemName: image)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(.secondary)
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(help)
-        .onAppear {
-            glowRadius = 5.0
-        }
     }
 
     /// Helper to wrap view content with console at bottom

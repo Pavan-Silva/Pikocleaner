@@ -14,7 +14,6 @@ struct InterfaceSettingsTab: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var locations: Locations
     @EnvironmentObject var updater: Updater
-    @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var fsm: FolderSettingsManager
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("settings.general.glass") private var glass: Bool = false

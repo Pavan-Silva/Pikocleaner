@@ -15,7 +15,6 @@ struct SettingsView: View {
     @AppStorage("settings.general.glass") private var glass: Bool = false
     @AppStorage("settings.general.selectedTab") private var selectedTab: CurrentTabView = .general
     @AppStorage("settings.interface.scrollIndicators") private var scrollIndicators: Bool = false
-    @State private var showPerms = false
     @State private var toolbarRefreshTrigger = false
     @ObservedObject private var helperToolManager = HelperToolManager.shared
 
@@ -158,15 +157,12 @@ struct SettingsView: View {
                 Divider().frame(height: 10)
 
                 Button() {
-                    showPerms.toggle()
+                    PermissionManagerLocal.shared.presentPrompt(activate: true)
                 } label: {
                     Text(String(localized: "Permissions").uppercased())
                         .font(.footnote)
                         .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                 }
-                .sheet(isPresented: $showPerms, content: {
-                    PermissionsSheetView()
-                })
             }
             .controlSize(.small)
             .buttonStyle(.plain)

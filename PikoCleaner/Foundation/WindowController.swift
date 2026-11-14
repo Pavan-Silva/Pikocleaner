@@ -71,6 +71,11 @@ public class WindowManager {
         // Don't nil out - keep window reference for reuse
     }
 
+    /// Whether a window was created and is owned by WindowManager (e.g. Settings).
+    public func isManaged(_ window: NSWindow) -> Bool {
+        return windows.values.contains { $0 === window }
+    }
+
     // Force close and destroy the window (rarely needed)
     public func forceClose(id: String = "window") {
         windows[id]?.close()

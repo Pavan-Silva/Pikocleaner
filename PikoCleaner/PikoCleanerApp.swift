@@ -77,7 +77,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         // Check permissions once at launch
         PermissionManagerLocal.shared.checkPermissions(types: [.fullDiskAccess]) { results in
-            PermissionManagerLocal.shared.results = results
+            PermissionManagerLocal.shared.updateResults(results)
         }
 
         // Load and cleanup undo history

@@ -393,7 +393,6 @@ func openAppSettingsWindow(tab: CurrentTabView? = nil, updater: Updater) {
         .environmentObject(Locations())
         .environmentObject(FolderSettingsManager.shared)
         .environmentObject(updater)
-        .environmentObject(PermissionManager.shared)
         .frame(width: 800, height: 710)
         .navigationTitle("")
 
