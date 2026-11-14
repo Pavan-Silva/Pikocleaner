@@ -1387,6 +1387,18 @@ func uninstallPikoCleaner(appState: AppState, locations: Locations) async {
                 selectedItemsArray.insert(bundleURL, at: 0)
             }
 
+            // The Finder extension gets its own container and scripts folder.
+            // The scanner normally finds these, but add them explicitly so the
+            // extension never survives as an orphaned hidden file.
+            for fallbackPath in pikoCleanerExtensionPaths()
+            where FileManager.default.fileExists(atPath: fallbackPath.path)
+                && !selectedItemsArray.contains(where: {
+                    $0.standardizedFileURL.path == fallbackPath.path
+                })
+            {
+                selectedItemsArray.append(fallbackPath)
+            }
+
             if selectedItemsArray.count == 1 {
                 printOS("Uninstall: No related files were found, removing only the app bundle.")
             }
@@ -1499,37 +1511,101 @@ private func removeCLISymlink() async {
     }
 }
 
+private let finderExtensionBundleIdentifier = "com.pavansilva.PikoCleaner.FinderOpen"
+
+/// Per-user locations the Finder extension may create outside the app bundle.
+private func pikoCleanerExtensionPaths() -> [URL] {
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    return [
+        home.appendingPathComponent(
+            "Library/Containers/\(finderExtensionBundleIdentifier)"),
+        home.appendingPathComponent(
+            "Library/Application Scripts/\(finderExtensionBundleIdentifier)"),
+        home.appendingPathComponent(
+            "Library/Group Containers/group.com.pavansilva.PikoCleaner"),
+    ]
+}
+
+/// Runs a command and returns its exit status and standard output.
+private func runUninstallCommand(
+    _ executable: String, _ arguments: [String]
+) -> (status: Int32, output: String) {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: executable)
+    process.arguments = arguments
+
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    process.standardError = FileHandle.nullDevice
+
+    do {
+        try process.run()
+    } catch {
+        return (-1, "")
+    }
+
+    // Drain the pipe before waiting so a large result cannot deadlock the child.
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    process.waitUntilExit()
+    return (process.terminationStatus, String(data: data, encoding: .utf8) ?? "")
+}
+
+/// Returns every registered copy of the Finder extension, including stale ones
+/// from previous builds and installs.
+private func registeredFinderExtensionPaths() -> [String] {
+    let result = runUninstallCommand(
+        "/usr/bin/pluginkit",
+        ["-m", "-A", "-D", "-v", "-i", finderExtensionBundleIdentifier])
+    guard result.status == 0 else { return [] }
+
+    return result.output
+        .split(separator: "\n")
+        .compactMap { line in
+            guard let path = line.split(separator: "\t").last else { return nil }
+            let trimmed = path.trimmingCharacters(in: .whitespaces)
+            return trimmed.hasSuffix(".appex") ? trimmed : nil
+        }
+}
+
 @discardableResult
 private func unregisterFinderPluginForSelfUninstall() -> Bool {
     let pluginPath = Bundle.main.bundleURL
         .appendingPathComponent("Contents/PlugIns/FinderOpen.appex").path
-    let ignoreTask = Process()
-    ignoreTask.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit")
-    ignoreTask.arguments = ["-e", "ignore", "-i", "com.pavansilva.PikoCleaner.FinderOpen"]
-    do {
-        try ignoreTask.run()
-    } catch {
-        printOS("Uninstall: Failed to launch pluginkit: \(error.localizedDescription)")
-        return false
-    }
-    ignoreTask.waitUntilExit()
-    guard ignoreTask.terminationStatus == 0 else {
-        return false
+
+    // Stop the running extension first so Finder releases the bundle before it
+    // is moved to the Trash.
+    _ = runUninstallCommand("/usr/bin/pkill", ["-f", pluginPath])
+
+    // Remove every registered copy of the extension, not just the one inside the
+    // running app. Registrations from older builds used to survive uninstall and
+    // kept the extension listed in System Settings.
+    var removed = false
+    var pathsToRemove = registeredFinderExtensionPaths()
+    if FileManager.default.fileExists(atPath: pluginPath) {
+        pathsToRemove.append(pluginPath)
     }
 
-    guard FileManager.default.fileExists(atPath: pluginPath) else { return true }
-
-    let removeTask = Process()
-    removeTask.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit")
-    removeTask.arguments = ["-r", pluginPath]
-    do {
-        try removeTask.run()
-    } catch {
-        printOS("Uninstall: Failed to launch pluginkit: \(error.localizedDescription)")
-        return false
+    for path in Set(pathsToRemove) {
+        let result = runUninstallCommand("/usr/bin/pluginkit", ["-r", path])
+        if result.status == 0 {
+            removed = true
+        } else {
+            printOS("Uninstall: Failed to remove Finder extension at \(path).")
+        }
     }
-    removeTask.waitUntilExit()
-    return removeTask.terminationStatus == 0
+
+    // The old implementation left the extension in an "ignored" state, which
+    // kept a disabled entry around after uninstall and would also disable the
+    // extension after reinstalling. Clear the election instead.
+    let election = runUninstallCommand(
+        "/usr/bin/pluginkit", ["-e", "default", "-i", finderExtensionBundleIdentifier])
+    if election.status != 0 {
+        printOS("Uninstall: Failed to reset the Finder extension state.")
+    }
+
+    // Report success when the extension is no longer registered. If pluginkit
+    // had nothing to remove, the uninstall is still fine.
+    return removed || registeredFinderExtensionPaths().isEmpty
 }
 
 // --- Load Plist file with SMAppService ---
