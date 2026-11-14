@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum PackageSortOption: String, CaseIterable {
     case packageName = "Name"
@@ -119,6 +120,44 @@ struct PackageView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
+            PageHeaderView(
+                title: "Package Manager",
+                description: "Manage packages installed via macOS Installer"
+            ) {
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            consoleManager.showConsole.toggle()
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
+                    }
+                    .help("Toggle console output")
+
+                    Menu {
+                        ForEach(PackageSortOption.allCases, id: \.self) { option in
+                            Button {
+                                sortOption = option
+                            } label: {
+                                Label(option.displayName, systemImage: option.systemImage)
+                            }
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: sortOption.displayName, systemImage: sortOption.systemImage)
+                    }
+                    .menuIndicator(.hidden)
+                    .help("Sort by \(sortOption.displayName)")
+
+                    Button {
+                        refreshPackages()
+                    } label: {
+                        PageHeaderActionLabel(title: "Refresh", systemImage: "arrow.counterclockwise")
+                    }
+                    .disabled(isLoading)
+                    .help("Refresh packages")
+                }
+            }
+
             // Search bar
             HStack {
                 Image(systemName: "magnifyingglass")
@@ -143,6 +182,7 @@ struct PackageView: View {
             .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
             .controlGroup(Capsule(style: .continuous), level: .primary)
             .padding(.top, 5)
+            .padding(.horizontal, 20)
 
             if isLoading && packages.isEmpty {
                 VStack(alignment: .center, spacing: 10) {
@@ -182,19 +222,26 @@ struct PackageView: View {
                     Spacer()
 
                     if let lastRefresh = lastRefreshDate {
-                        TimelineView(.periodic(from: lastRefresh, by: 1.0)) { _ in
-                            Text("Updated \(formatRelativeTime(lastRefresh))")
-                                .font(.caption)
-                                .monospacedDigit()
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                        TimelineView(.periodic(from: lastRefresh, by: 60.0)) { timeline in
+                            Group {
+                                if timeline.date.timeIntervalSince(lastRefresh) < 60 {
+                                    Text("Updated now")
+                                } else {
+                                    Text("Updated \(formatRelativeTime(lastRefresh))")
+                                }
+                            }
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                         }
                     }
                 }
                 .padding(.vertical)
+                .padding(.horizontal, 20)
 
                 ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(filteredPackages, id: \.id) { package in
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(filteredPackages.enumerated()), id: \.offset) { index, package in
                             PackageRowView(
                                 package: package,
                                 isExpanded: expandedPackages.contains(package.packageId),
@@ -216,15 +263,19 @@ struct PackageView: View {
                             .onAppear {
                                 loadBOMFilesIfNeeded(for: package.packageId)
                             }
+
+                            if index < filteredPackages.count - 1 {
+                                Divider()
+                            }
                         }
                     }
                 }
                 .scrollIndicators(scrollIndicators ? .automatic : .never)
+                .padding(.horizontal, 20)
             }
 
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding([.horizontal], 20)
         .onAppear {
             if packages.isEmpty {
                 refreshPackages()
@@ -235,56 +286,6 @@ struct PackageView: View {
             refreshPackages()
         }
         .pikoToolbarBackground()
-        .toolbar {
-            TahoeToolbarItem(placement: .navigation) {
-                VStack(alignment: .leading) {
-                    Text("Package Manager")
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Text("Manage packages installed via macOS Installer")
-                        .font(.callout)
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                }
-            }
-
-            ToolbarItem { Spacer() }
-
-            TahoeToolbarItem(isGroup: true) {
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        consoleManager.showConsole.toggle()
-                    }
-                } label: {
-                    Label("Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
-                }
-                .help("Toggle console output")
-                
-                Menu {
-                    ForEach(PackageSortOption.allCases, id: \.self) { option in
-                        Button {
-                            sortOption = option
-                        } label: {
-                            Label(option.displayName, systemImage: option.systemImage)
-                        }
-                    }
-                } label: {
-                    Label(sortOption.displayName, systemImage: sortOption.systemImage)
-                }
-                .labelStyle(.titleAndIcon)
-                .menuIndicator(.hidden)
-
-                Button {
-                    refreshPackages()
-                } label: {
-                    Label("Refresh", systemImage: "arrow.counterclockwise")
-                }
-                .disabled(isLoading)
-
-
-            }
-
-        }
     }
 
     private func toggleExpansion(for packageId: String) {
@@ -673,27 +674,19 @@ struct PackageRowView: View {
     let onRefresh: () -> Void
     let onUpdateBomFiles: ([String]) -> Void
     @State private var isPerformingAction = false
-    @State private var isHovered = false
     @AppStorage("settings.interface.scrollIndicators") private var scrollIndicators: Bool = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             
             // Main package info row
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: PageListMetrics.itemSpacing) {
                 
-                // Package icon and type indicator
-                VStack(spacing: 4) {
-                    ZStack {
-                        Circle()
-                            .fill(packageColor.opacity(0.2))
-                            .frame(width: 32, height: 32)
-                        
-                        Image(systemName: "shippingbox.fill")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(packageColor)
-                    }
-                }
+                Image(nsImage: NSWorkspace.shared.icon(for: UTType(filenameExtension: "pkg") ?? .data))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 40, height: 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 
                 // Package details
                 VStack(alignment: .leading, spacing: 6) {
@@ -701,12 +694,12 @@ struct PackageRowView: View {
                     HStack(alignment: .center, spacing: 8) {
                         if sortOption == .packageId {
                             Text(package.packageId)
-                                .font(.headline)
+                                .font(.title3)
                                 .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
                                 .lineLimit(1)
                         } else {
                             Text(package.displayName)
-                                .font(.headline)
+                                .font(.title3)
                                 .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
                                 .lineLimit(1)
                         }
@@ -739,13 +732,13 @@ struct PackageRowView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         if sortOption == .packageId {
                             Text("Name: \(package.displayName)")
-                                .font(.caption)
+                                .font(.footnote)
                                 .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                         } else {
                             Text("ID: \(package.packageId)")
-                                .font(.caption)
+                                .font(.footnote)
                                 .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
@@ -788,8 +781,8 @@ struct PackageRowView: View {
                                         .font(.caption2)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
-                                        .background(Color.blue.opacity(0.2))
-                                        .foregroundStyle(Color.blue)
+                                        .background(ThemeColors.shared(for: colorScheme).secondaryBG.opacity(0.5))
+                                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                                         .cornerRadius(4)
                                 }
 
@@ -856,45 +849,67 @@ struct PackageRowView: View {
                 }
                 
                 // Action buttons
-                VStack(spacing: 6) {
-                    HStack(spacing: 10) {
-
-                        Button(isExpanded ? "Close" : "Details") {
+                if isPerformingAction {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 32, height: 32)
+                } else {
+                    HStack(spacing: 0) {
+                        Button {
                             onToggleExpansion()
+                        } label: {
+                            Image(systemName: isExpanded ? "xmark" : "info.circle")
+                                .font(.system(size: 14))
                         }
-                        .buttonStyle(.borderless)
-                        .controlSize(.mini)
-                        .foregroundStyle(.blue)
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: ThemeColors.shared(for: colorScheme).secondaryText,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            verticalPadding: 8,
+                            horizontalPadding: 9,
+                            skipControlGroup: true
+                        ))
                         .disabled(isPerformingAction)
                         .help(isExpanded ? "Hide details" : "Show file details")
+                        .accessibilityLabel(isExpanded ? "Hide details" : "Show details")
 
-                        Divider().frame(height: 10)
-
-                        Button("Forget") {
+                        Button {
                             onForget()
+                        } label: {
+                            Image(systemName: "minus.circle")
+                                .font(.system(size: 14))
                         }
-                        .buttonStyle(.borderless)
-                        .controlSize(.mini)
-                        .foregroundStyle(.orange)
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: .orange,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            verticalPadding: 8,
+                            horizontalPadding: 9,
+                            skipControlGroup: true
+                        ))
                         .disabled(isPerformingAction)
                         .help("Remove package from system records (does not delete files)")
+                        .accessibilityLabel("Forget package")
 
-                        Divider().frame(height: 10)
-
-                        Button("Uninstall") {
+                        Button {
                             onUninstall()
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 14))
                         }
-                        .buttonStyle(.borderless)
-                        .controlSize(.mini)
-                        .foregroundStyle(.red)
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: .red,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            verticalPadding: 8,
+                            horizontalPadding: 9,
+                            skipControlGroup: true
+                        ))
                         .disabled(isPerformingAction)
                         .help("Completely remove package: delete all files, receipts, and forget package")
+                        .accessibilityLabel("Uninstall package")
                     }
-
-                    if isPerformingAction {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    }
+                    .controlGroup(Capsule(style: .continuous), level: .primary)
                 }
             }
             
@@ -1054,28 +1069,12 @@ struct PackageRowView: View {
                 }
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isHovered ? 
-                    ThemeColors.shared(for: colorScheme).secondaryBG.opacity(0.8) :
-                    ThemeColors.shared(for: colorScheme).secondaryBG
-                )
-        )
+        .padding(.vertical, PageListMetrics.rowVerticalInset)
         .onTapGesture {
             onToggleExpansion()
         }
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isHovered = hovering
-            }
-        }
     }
     
-    private var packageColor: Color {
-        return .green
-    }
-
     private func formatInstallDate(_ dateString: String) -> String {
         // Parse the install date format from pkgutil
         if let timestamp = Double(dateString) {

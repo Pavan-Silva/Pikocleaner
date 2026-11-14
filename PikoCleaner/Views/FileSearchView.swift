@@ -32,6 +32,7 @@ struct FileSearchView: View {
     @State private var showDateFilterDialog: Bool = false
     @State private var showTagsFilterDialog: Bool = false
     @State private var showCommentFilterDialog: Bool = false
+    @State private var showClearConfirmation: Bool = false
     @State private var searchStartTime: Date?
     @State private var searchElapsedTime: TimeInterval = 0
     @State private var elapsedTimeUpdateTimer: Timer?
@@ -58,105 +59,193 @@ struct FileSearchView: View {
         }
     }
 
+    private var volumeSelector: some View {
+        Menu {
+            Button("Startup Disk") {
+                selectedVolume = "/"
+                selectedVolumeName = "Startup Disk"
+            }
+
+            if !appState.volumeInfos.isEmpty {
+                Divider()
+                ForEach(appState.volumeInfos) { volume in
+                    Button(volume.name) {
+                        selectedVolume = volume.path
+                        selectedVolumeName = volume.name
+                    }
+                }
+            }
+
+            Divider()
+
+            Button("Choose Folder...") {
+                let panel = NSOpenPanel()
+                panel.canChooseFiles = false
+                panel.canChooseDirectories = true
+                panel.allowsMultipleSelection = false
+                panel.prompt = "Choose"
+                if panel.runModal() == .OK, let url = panel.url {
+                    selectedVolume = url.path
+                    selectedVolumeName = url.lastPathComponent
+                }
+            }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "externaldrive")
+                Text(selectedVolumeName)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: 70, alignment: .leading)
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+            }
+        }
+        .buttonStyle(ControlGroupButtonStyle(
+            foregroundColor: ThemeColors.shared(for: colorScheme).accent,
+            shape: Capsule(style: .continuous),
+            level: .primary,
+            skipControlGroup: true
+        ))
+    }
+
+    private var searchTypeSelector: some View {
+        Menu {
+            ForEach(SearchType.allCases, id: \.self) { type in
+                Button(type.rawValue) {
+                    searchType = type
+                    includeSubfolders = type != .filesOnly
+                }
+            }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: searchType == .filesOnly ? "doc" : searchType == .foldersOnly ? "folder" : "doc.on.doc")
+                Text(searchType.rawValue)
+                    .lineLimit(1)
+                    .frame(maxWidth: 80, alignment: .leading)
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+            }
+        }
+        .buttonStyle(ControlGroupButtonStyle(
+            foregroundColor: ThemeColors.shared(for: colorScheme).primaryText,
+            shape: Capsule(style: .continuous),
+            level: .primary,
+            skipControlGroup: true
+        ))
+    }
+
+    private var searchOptionsMenu: some View {
+        Menu {
+            Toggle("Include subfolders", isOn: $includeSubfolders)
+                .disabled(searchType == .filesOnly)
+            Toggle("Exclude system folders", isOn: $excludeSystemFolders)
+            Toggle("Include hidden files", isOn: $includeHiddenFiles)
+            Toggle("Case sensitive", isOn: $caseSensitive)
+        } label: {
+            Label("Options", systemImage: "slider.horizontal.3")
+        }
+        .buttonStyle(ControlGroupButtonStyle(
+            foregroundColor: ThemeColors.shared(for: colorScheme).primaryText,
+            shape: Capsule(style: .continuous),
+            level: .primary,
+            skipControlGroup: true
+        ))
+        .help("Configure search options")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
+            PageHeaderView(
+                title: "File Search",
+                description: "Search for files and folders with advanced filters"
+            ) {
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            consoleManager.showConsole.toggle()
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
+                    }
+                    .help("Toggle console output")
+
+                    Menu {
+                        Button("Name") {
+                            showNameFilterDialog = true
+                        }
+                        Button("Extension") {
+                            showExtensionFilterDialog = true
+                        }
+                        Button("Size") {
+                            showSizeFilterDialog = true
+                        }
+                        Button("Date") {
+                            showDateFilterDialog = true
+                        }
+                        Button("Tags") {
+                            showTagsFilterDialog = true
+                        }
+                        Button("Comment") {
+                            showCommentFilterDialog = true
+                        }
+                        Menu("Kind") {
+                            ForEach(KindFilterType.allCases, id: \.self) { kind in
+                                Button(kind.displayName) {
+                                    addFilter(.kind(kind))
+                                }
+                            }
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Add Filter", systemImage: "line.3.horizontal.decrease.circle")
+                    }
+                    .menuIndicator(.hidden)
+                    .help("Add a search filter")
+
+                    Button {
+                        showClearConfirmation = true
+                    } label: {
+                        PageHeaderActionLabel(title: "Clear", systemImage: "trash")
+                    }
+                    .disabled(results.isEmpty && activeFilters.isEmpty && filterText.isEmpty && !hasSearched)
+                    .help("Clear search results and filters")
+
+                    if isSearching {
+                        Button {
+                            stopSearch()
+                        } label: {
+                            PageHeaderActionLabel(title: "Stop", systemImage: "stop.fill")
+                        }
+                        .help("Stop search")
+                    } else {
+                        Button {
+                            startSearch()
+                        } label: {
+                            PageHeaderActionLabel(title: "Search", systemImage: "play.fill")
+                        }
+                        .help("Start search")
+                    }
+                }
+            }
+
             // Filter controls
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    // Volume selector
-                    Menu {
-                        Button("Startup Disk") {
-                            selectedVolume = "/"
-                            selectedVolumeName = "Startup Disk"
-                        }
-
-                        if !appState.volumeInfos.isEmpty {
-                            Divider()
-                            ForEach(appState.volumeInfos) { volume in
-                                Button(volume.name) {
-                                    selectedVolume = volume.path
-                                    selectedVolumeName = volume.name
-                                }
-                            }
-                        }
-
-                        Divider()
-
-                        Button("Choose Folder...") {
-                            let panel = NSOpenPanel()
-                            panel.canChooseFiles = false
-                            panel.canChooseDirectories = true
-                            panel.allowsMultipleSelection = false
-                            panel.prompt = "Choose"
-                            if panel.runModal() == .OK, let url = panel.url {
-                                selectedVolume = url.path
-                                selectedVolumeName = url.lastPathComponent
-                            }
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: "externaldrive")
-                            Text(selectedVolumeName)
-                            Image(systemName: "chevron.down")
-                                .font(.caption)
-                        }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) {
+                        volumeSelector
+                        searchTypeSelector
+                        searchOptionsMenu
                     }
-                    .buttonStyle(ControlGroupButtonStyle(
-                        foregroundColor: ThemeColors.shared(for: colorScheme).accent,
-                        shape: Capsule(style: .continuous),
-                        level: .primary,
-                        skipControlGroup: true
-                    ))
 
-                    // Search type selector
-                    Menu {
-                        ForEach(SearchType.allCases, id: \.self) { type in
-                            Button(type.rawValue) {
-                                searchType = type
-                                // Disable subfolders option when files only, enable for others
-                                if type == .filesOnly {
-                                    includeSubfolders = false
-                                } else {
-                                    includeSubfolders = true
-                                }
-                            }
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            volumeSelector
+                            searchTypeSelector
                         }
-                    } label: {
-                        HStack {
-                            Image(systemName: searchType == .filesOnly ? "doc" : searchType == .foldersOnly ? "folder" : "doc.on.doc")
-                            Text(searchType.rawValue)
-                            Image(systemName: "chevron.down")
-                                .font(.caption)
-                        }
+                        searchOptionsMenu
                     }
-                    .buttonStyle(ControlGroupButtonStyle(
-                        foregroundColor: ThemeColors.shared(for: colorScheme).primaryText,
-                        shape: Capsule(style: .continuous),
-                        level: .primary,
-                        skipControlGroup: true
-                    ))
-
-                    // Search options
-                    Toggle("Include subfolders", isOn: $includeSubfolders)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-                        .disabled(searchType == .filesOnly)
-
-                    Toggle("Exclude system folders", isOn: $excludeSystemFolders)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-
-                    Toggle("Include hidden files", isOn: $includeHiddenFiles)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-
-                    Toggle("Case sensitive", isOn: $caseSensitive)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-
-                    Spacer()
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Active filters
                 if !activeFilters.isEmpty {
@@ -173,82 +262,97 @@ struct FileSearchView: View {
                     }
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 12)
             .padding(.top, 5)
 
             // Stats header
             if hasSearched || isSearching {
                 HStack(spacing: 12) {
-                    // Results count - leading aligned, 200 width
                     Text("\(results.count) result\(results.count == 1 ? "" : "s")")
                         .font(.caption)
                         .monospacedDigit()
                         .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                        .frame(width: 200, alignment: .leading)
+                        .lineLimit(1)
 
                     Spacer()
 
-                    // Action buttons - centered
-                    Button(action: {
-                        if selectedResults.count == 1,
-                           let selectedId = selectedResults.first,
-                           let result = results.first(where: { $0.id == selectedId }) {
-                            NSWorkspace.shared.open(result.url)
+                    HStack(spacing: 0) {
+                        Button(action: {
+                            if selectedResults.count == 1,
+                               let selectedId = selectedResults.first,
+                               let result = results.first(where: { $0.id == selectedId }) {
+                                NSWorkspace.shared.open(result.url)
+                            }
+                        }) {
+                            Label("Open", systemImage: "arrow.up.forward.app")
+                                .font(.callout)
                         }
-                    }) {
-                        Label("Open", systemImage: "arrow.up.forward.app")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(selectedResults.count != 1)
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: ThemeColors.shared(for: colorScheme).primaryText,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            skipControlGroup: true
+                        ))
+                        .disabled(selectedResults.count != 1)
 
-                    Button(action: {
-                        if selectedResults.count == 1,
-                           let selectedId = selectedResults.first,
-                           let result = results.first(where: { $0.id == selectedId }) {
-                            // Temporarily deselect to force re-render, then reselect
-                            selectedResults.removeAll()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                                editingItemId = selectedId
-                                editingText = result.name
-                                selectedResults.insert(selectedId)
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                    isEditingFocused = true
+                        Divider().frame(height: 16)
+
+                        Button(action: {
+                            if selectedResults.count == 1,
+                               let selectedId = selectedResults.first,
+                               let result = results.first(where: { $0.id == selectedId }) {
+                                selectedResults.removeAll()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                                    editingItemId = selectedId
+                                    editingText = result.name
+                                    selectedResults.insert(selectedId)
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                        isEditingFocused = true
+                                    }
                                 }
                             }
+                        }) {
+                            Label("Rename", systemImage: "pencil")
+                                .font(.callout)
                         }
-                    }) {
-                        Label("Rename", systemImage: "pencil")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(selectedResults.count != 1)
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: ThemeColors.shared(for: colorScheme).primaryText,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            skipControlGroup: true
+                        ))
+                        .disabled(selectedResults.count != 1)
 
-                    Button(action: {
-                        deleteSelectedItems()
-                    }) {
-                        Label(selectedResults.count > 1 ? "Bulk Delete" : "Delete", systemImage: "trash")
-                            .font(.caption)
-                            .foregroundStyle(.red)
+                        Divider().frame(height: 16)
+
+                        Button(action: deleteSelectedItems) {
+                            Label("Delete", systemImage: "trash")
+                                .font(.callout)
+                        }
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: .red,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            skipControlGroup: true
+                        ))
+                        .disabled(selectedResults.isEmpty)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(selectedResults.isEmpty)
+                    .controlGroup(Capsule(style: .continuous), level: .primary)
+                    .fixedSize(horizontal: true, vertical: false)
 
                     Spacer()
 
-                    // Elapsed time - trailing aligned, 200 width
                     if searchStartTime != nil {
                         Text("Elapsed Time: \(formatElapsedTime(searchElapsedTime))")
                             .font(.caption)
                             .monospacedDigit()
                             .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                            .frame(width: 200, alignment: .trailing)
+                            .lineLimit(1)
                     } else {
                         EmptyView()
-                            .frame(width: 200, alignment: .trailing)
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, PageListMetrics.horizontalInset)
                 .padding(.vertical)
             }
 
@@ -298,12 +402,12 @@ struct FileSearchView: View {
                                 Image(nsImage: icon)
                                     .resizable()
                                     .scaledToFit()
-                                    .frame(width: 24, height: 24)
+                                    .frame(width: PageListMetrics.iconSize, height: PageListMetrics.iconSize)
                             }
                             Spacer()
                         }
                     }
-                    .width(40)
+                    .width(48)
 
                     TableColumn("Name", value: \.name) { result in
                         if editingItemId == result.id {
@@ -460,102 +564,17 @@ struct FileSearchView: View {
             }
         }
         .pikoToolbarBackground()
-        .toolbar {
-            TahoeToolbarItem(placement: .navigation) {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("File Search")
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        Text("Search for files and folders with advanced filters")
-                            .font(.callout)
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                    }
-
-                }
-
+        .confirmationDialog(
+            "Clear search results?",
+            isPresented: $showClearConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Clear Results", role: .destructive) {
+                clearSearchResults()
             }
-
-            ToolbarItem { Spacer() }
-
-            TahoeToolbarItem(isGroup: true) {
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        consoleManager.showConsole.toggle()
-                    }
-                } label: {
-                    Label("Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
-                }
-                .help("Toggle console output")
-                
-                Menu {
-                    Button("Name") {
-                        showNameFilterDialog = true
-                    }
-                    Button("Extension") {
-                        showExtensionFilterDialog = true
-                    }
-                    Button("Size") {
-                        showSizeFilterDialog = true
-                    }
-                    Button("Date") {
-                        showDateFilterDialog = true
-                    }
-                    Button("Tags") {
-                        showTagsFilterDialog = true
-                    }
-                    Button("Comment") {
-                        showCommentFilterDialog = true
-                    }
-                    Menu("Kind") {
-                        ForEach(KindFilterType.allCases, id: \.self) { kind in
-                            Button(kind.displayName) {
-                                addFilter(.kind(kind))
-                            }
-                        }
-                    }
-                } label: {
-                    Label("Add Filter", systemImage: "line.3.horizontal.decrease.circle")
-                }
-                .labelStyle(.titleAndIcon)
-                .menuIndicator(.hidden)
-
-                Button {
-                    results.removeAll()
-                    selectedResults.removeAll()
-                    hasSearched = false
-                    searchStartTime = nil
-                    searchElapsedTime = 0
-                    deletedItemsCache.removeAll()
-                    activeFilters.removeAll()
-                } label: {
-                    Label("Clear", systemImage: "trash")
-                }
-                .disabled(results.isEmpty)
-
-                if isSearching {
-                    Button {
-                        stopSearch()
-                    } label: {
-                        Label("Stop", systemImage: "stop.fill")
-                    }
-                } else {
-                    Button {
-                        startSearch()
-                    } label: {
-                        Label("Search", systemImage: "play.fill")
-                    }
-                }
-            }
-        }
-        .sheet(isPresented: $showNameFilterDialog) {
-            NameFilterDialog { type, value in
-                addFilter(.name(type, value))
-                showNameFilterDialog = false
-            } onCancel: {
-                showNameFilterDialog = false
-            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will remove the current results and reset active filters.")
         }
         .sheet(isPresented: $showExtensionFilterDialog) {
             ExtensionFilterDialog { type, value in
@@ -600,6 +619,26 @@ struct FileSearchView: View {
     }
 
     // MARK: - Helper Functions
+
+    private func clearSearchResults() {
+        if isSearching {
+            stopSearch()
+        }
+
+        results.removeAll()
+        selectedResults.removeAll()
+        hasSearched = false
+        searchStartTime = nil
+        searchElapsedTime = 0
+        elapsedTimeUpdateTimer?.invalidate()
+        elapsedTimeUpdateTimer = nil
+        deletedItemsCache.removeAll()
+        activeFilters.removeAll()
+        calculatedFolderSizes.removeAll()
+        filterText = ""
+        editingItemId = nil
+        editingText = ""
+    }
 
     private func toggleSelection(for result: FileSearchResult) {
         if selectedResults.contains(result.id) {

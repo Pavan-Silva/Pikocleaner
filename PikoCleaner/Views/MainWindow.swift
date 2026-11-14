@@ -21,7 +21,6 @@ struct MainWindow: View {
     @EnvironmentObject var permissionManager: PermissionManagerLocal
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("settings.general.glass") private var glass: Bool = false
-    @AppStorage("settings.general.sidebarWidth") private var sidebarWidth: Double = 265
     @AppStorage("settings.interface.animationEnabled") private var animationEnabled: Bool = true
     @AppStorage("settings.console.state") private var consoleStateData: Data = Data()
 
@@ -39,7 +38,7 @@ struct MainWindow: View {
         // Main App Window
         ZStack {
 
-            HStack(alignment: .center, spacing: 0) {
+            HStack(alignment: .top, spacing: 0) {
 
                 ActivityRail(
                     selection: $appState.currentPage,
@@ -53,6 +52,11 @@ struct MainWindow: View {
                     case .applications:
                         withConsole {
                             applicationsView
+                        }
+
+                    case .storage:
+                        withConsole {
+                            MountedVolumeView()
                         }
 
                     case .orphans:
@@ -104,6 +108,7 @@ struct MainWindow: View {
                 }
 
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
 
             // Drop overlay
             if isDraggingOver {
@@ -139,7 +144,7 @@ struct MainWindow: View {
 
         }
         .background(backgroundView(color: ThemeColors.shared(for: colorScheme).primaryBG))
-        .frame(minWidth: 900, minHeight: 650)
+        .frame(minWidth: 900, minHeight: 600)
         .handlesExternalEvents(preferring: Set(arrayLiteral: "piko"), allowing: Set(arrayLiteral: "*"))
         .handleFileDrop(
             updater: updater,
@@ -221,9 +226,9 @@ struct MainWindow: View {
                         updater.getAnnouncementView()
                     }
                 } else if permissionManager.shouldShowPermissionWarning {
-                    noticeButton(image: "lock", help: "Missing Permissions") {
-                        permissionManager.presentPrompt()
-                    }
+                    // Permission guidance lives in the bottom-right prompt; the
+                    // toolbar stays free of status indicators.
+                    EmptyView()
                 } else if HelperToolManager.shared.shouldShowHelperBadge {
                     noticeButton(image: "gear", help: "Helper Not Installed") {
                         openAppSettingsWindow(tab: .helper, updater: updater)
@@ -246,6 +251,14 @@ struct MainWindow: View {
         }
 
         appState.currentPage = page
+    }
+
+    private func showAppsList() {
+        withAnimation(.easeInOut(duration: animationEnabled ? 0.3 : 0)) {
+            appState.appInfo = .empty
+            appState.selectedItems = []
+            appState.currentView = .empty
+        }
     }
 
     @ViewBuilder
@@ -287,45 +300,26 @@ struct MainWindow: View {
 
     @ViewBuilder
     private var applicationsView: some View {
-        HStack(alignment: .center, spacing: 0) {
-
-            // App List
-            AppSearchView()
-                .frame(width: sidebarWidth)
-                .transition(.opacity)
-                .ifGlassMain()
-                .padding(.leading, ForkInfo.usesGoldenGateChrome ? 0 : 8)
-                .padding(.vertical, ForkInfo.usesGoldenGateChrome ? 0 : 8)
-                .ignoresSafeArea(edges: .top)
-
-            // Details View with Console
-                HStack(spacing: 0) {
-                    Group {
-                        switch appState.currentView {
-                        case .empty:
-                            MountedVolumeView()
-                                .id(appState.appInfo.id)
-                        case .files:
-                            FilesView()
-                                .id(appState.appInfo.id)
-                                .environmentObject(brewManager)
-                        }
-                    }
-                    .transition(.opacity)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .zIndex(2)
+        Group {
+            switch appState.currentView {
+            case .empty:
+                AppSearchView()
+            case .files:
+                FilesView(onBackToApps: showAppsList)
+                    .id(appState.appInfo.id)
+                    .environmentObject(brewManager)
+            }
         }
+        .transition(.opacity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
 }
 
 struct MountedVolumeView: View {
-    @Environment(\.colorScheme) var colorScheme
     @ObservedObject private var themeManager = ThemeManager.shared
     @EnvironmentObject var appState: AppState
     @AppStorage("settings.interface.animationEnabled") private var animationEnabled: Bool = true
-    @AppStorage("settings.tutorial.dragToExpandShown") private var dragTutorialShown: Bool = true
     @State private var selectedVolumeIndex: Int = 0
 
         // Debug sliders
@@ -339,46 +333,6 @@ struct MountedVolumeView: View {
 
     var body: some View {
         ZStack(alignment: .center) {
-            VStack {
-
-                Spacer()
-
-                // Tutorial label for drag to expand (moved to end for proper z-order)
-                if dragTutorialShown {
-                    HStack {
-                        HStack {
-                            Image(systemName: "arrowshape.left.fill")
-                            Text("Drag to expand into grid mode")
-                        }
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(ThemeColors.shared(for: colorScheme).secondaryBG)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .strokeBorder(
-                                            ThemeColors.shared(for: colorScheme).accent.opacity(0.5),
-                                            lineWidth: 1)
-                                )
-                        )
-                        .onTapGesture {
-                            dragTutorialShown = false
-                        }
-
-                        Spacer()
-                    }
-                } else {
-                    Text("Select an app from the sidebar to begin")
-                        .font(.caption)
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                }
-
-
-            }
-
             if !appState.volumeInfos.isEmpty {
                 ZStack {
                     ForEach(Array(appState.volumeInfos.enumerated()), id: \.element.id) {
@@ -473,16 +427,11 @@ struct MountedVolumeView: View {
 //                }
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(edges: .top)
         .onAppear {
             // Start with root volume (index 0) selected
             selectedVolumeIndex = 0
-        }
-        .onChange(of: appState.isGridMode) { isGrid in
-            // Hide tutorial when user switches to grid mode
-            if isGrid {
-                dragTutorialShown = false
-            }
         }
 
     }
@@ -779,4 +728,3 @@ struct VolumeItemView: View {
     }
 
 }
-

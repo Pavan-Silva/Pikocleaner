@@ -116,6 +116,52 @@ struct EnvironmentCleanerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
+            PageHeaderView(
+                title: "Development Environments",
+                description: "Clean stored files and cache for common IDEs"
+            ) {
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            consoleManager.showConsole.toggle()
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
+                    }
+                    .help("Toggle console output")
+
+                    Menu {
+                        ForEach(paths, id: \.self) { environment in
+                            Group {
+                                if environment.paths.isEmpty {
+                                    Text(verbatim: "\(environment.name) (0)")
+                                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                                } else {
+                                    Button {
+                                        appState.selectedEnvironment = environment
+                                        selectedPaths.removeAll()
+                                    } label: {
+                                        Text(verbatim: "\(environment.name) (\(environment.paths.count))")
+                                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: appState.selectedEnvironment?.name ?? "Select Environment", systemImage: "list.bullet")
+                    }
+                    .menuIndicator(.hidden)
+                    .help(appState.selectedEnvironment?.name ?? "Select environment")
+
+                    Button {
+                        refreshPaths()
+                    } label: {
+                        PageHeaderActionLabel(title: "Refresh", systemImage: "arrow.counterclockwise")
+                    }
+                    .help("Refresh development paths")
+                }
+            }
+
             // Search bar
             HStack {
                 Image(systemName: "magnifyingglass")
@@ -139,6 +185,7 @@ struct EnvironmentCleanerView: View {
             .padding(.vertical, 8)
             .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
             .controlGroup(Capsule(style: .continuous), level: .primary)
+            .padding(.horizontal, 20)
             .padding(.top, 5)
 
             if let selectedEnvironment = appState.selectedEnvironment, filteredPaths.count > 0 {
@@ -160,15 +207,22 @@ struct EnvironmentCleanerView: View {
                     Spacer()
 
                     if let lastRefresh = lastRefreshDate {
-                        TimelineView(.periodic(from: lastRefresh, by: 1.0)) { _ in
-                            Text("Updated \(formatRelativeTime(lastRefresh))")
-                                .font(.caption)
-                                .monospacedDigit()
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                        TimelineView(.periodic(from: lastRefresh, by: 60.0)) { timeline in
+                            Group {
+                                if timeline.date.timeIntervalSince(lastRefresh) < 60 {
+                                    Text("Updated now")
+                                } else {
+                                    Text("Updated \(formatRelativeTime(lastRefresh))")
+                                }
+                            }
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                         }
                     }
                 }
                 .padding(.vertical)
+                .padding(.horizontal, 20)
 
                 // Add workspace storage cleaner for certain IDEs
                 let workspaceIDEs = ["VS Code", "Cursor", "Zed"]
@@ -177,15 +231,17 @@ struct EnvironmentCleanerView: View {
                 if workspaceIDEs.contains(selectedEnvironment.name) {
                     WorkspaceStorageCleanerView(ideName: selectedEnvironment.name)
                         .id(selectedEnvironment.name)
+                        .padding(.horizontal, 20)
                         .padding(.bottom, 10)
                 } else if packageManagers.contains(selectedEnvironment.name) {
                     PipPackageCleanerView()
                         .id(selectedEnvironment.name)
+                        .padding(.horizontal, 20)
                         .padding(.bottom, 10)
                 }
 
                 ScrollView {
-                    LazyVStack(spacing: 10) {
+                    LazyVStack(spacing: selectedEnvironment.name == "All" ? 10 : 0) {
                         if selectedEnvironment.name == "All" {
                             // Show categorized view for "All" environment
                             ForEach(paths.filter { !$0.paths.isEmpty && $0.name != "All" }, id: \.name) { environment in
@@ -198,7 +254,7 @@ struct EnvironmentCleanerView: View {
 
                                     GroupBox {
                                         if !isCollapsed {
-                                            ForEach(environmentPaths, id: \.self) { path in
+                                            ForEach(Array(environmentPaths.enumerated()), id: \.element) { index, path in
                                                 PathRowView(
                                                     path: path,
                                                     isSelected: Binding(
@@ -211,9 +267,10 @@ struct EnvironmentCleanerView: View {
                                                             }
                                                         }
                                                     )
-                                                ) {
-                                                    refreshPaths()
-                                                    selectedPaths.remove(path)
+                                                )
+
+                                                if index < environmentPaths.count - 1 {
+                                                    Divider()
                                                 }
                                             }
                                             .transition(.opacity.combined(with: .slide))
@@ -236,7 +293,7 @@ struct EnvironmentCleanerView: View {
                         } else {
                             // Show regular path list for specific environments
                             if let filteredEnvironment = filteredPaths.first {
-                                ForEach(filteredEnvironment.paths, id: \.self) { path in
+                                ForEach(Array(filteredEnvironment.paths.enumerated()), id: \.element) { index, path in
                                     PathRowView(
                                         path: path,
                                         isSelected: Binding(
@@ -249,13 +306,10 @@ struct EnvironmentCleanerView: View {
                                                 }
                                             }
                                         )
-                                    ) {
-                                        refreshPaths()
-                                        selectedPaths.remove(path)
-                                        if let env = appState.selectedEnvironment,
-                                           paths.first(where: { $0.name == env.name })?.paths.isEmpty ?? true {
-                                            appState.selectedEnvironment = nil
-                                        }
+                                    )
+
+                                    if index < filteredEnvironment.paths.count - 1 {
+                                        Divider()
                                     }
                                 }
                             }
@@ -263,6 +317,7 @@ struct EnvironmentCleanerView: View {
                     }
                 }
                 .scrollIndicators(scrollIndicators ? .automatic : .never)
+                .padding(.horizontal, 20)
             } else {
                 VStack(alignment: .center) {
                     Spacer()
@@ -277,7 +332,6 @@ struct EnvironmentCleanerView: View {
 
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 20)
         .safeAreaInset(edge: .bottom) {
             if !selectedPaths.isEmpty {
                 // Show selection toolbar only when items are selected
@@ -372,7 +426,8 @@ struct EnvironmentCleanerView: View {
 
                         Spacer()
                     }
-                    .padding([.horizontal, .bottom])
+                    .padding(.horizontal, 20)
+                    .padding(.bottom)
                 }
             }
         }
@@ -383,58 +438,6 @@ struct EnvironmentCleanerView: View {
             refreshPaths()
         }
         .pikoToolbarBackground()
-        .toolbar {
-            TahoeToolbarItem(placement: .navigation) {
-                VStack(alignment: .leading){
-                    Text("Development Environments").foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText).font(.title2).fontWeight(.bold)
-                    Text("Clean stored files and cache for common IDEs")
-                        .font(.callout).foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                }
-            }
-
-            ToolbarItem { Spacer() }
-
-            TahoeToolbarItem(isGroup: true) {
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        consoleManager.showConsole.toggle()
-                    }
-                } label: {
-                    Label("Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
-                }
-                .help("Toggle console output")
-                
-                Menu {
-                    ForEach(paths, id: \.self) { environment in
-                        Group {
-                            if environment.paths.isEmpty {
-                                Text(verbatim: "\(environment.name) (0)")
-                                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                            } else {
-                                Button {
-                                    appState.selectedEnvironment = environment
-                                    selectedPaths.removeAll()
-                                } label: {
-                                    Text(verbatim: "\(environment.name) (\(environment.paths.count))")
-                                        .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    Label(appState.selectedEnvironment?.name ?? "Select Environment", systemImage: "list.bullet")
-                }
-                .labelStyle(.titleAndIcon)
-                .menuIndicator(.hidden)
-
-                Button {
-                    refreshPaths()
-                } label: {
-                    Label("Refresh", systemImage: "arrow.counterclockwise")
-                }
-
-            }
-        }
     }
 }
 
@@ -443,101 +446,78 @@ struct PathRowView: View {
     @Environment(\.colorScheme) var colorScheme
     let path: String
     @Binding var isSelected: Bool
-    let onDelete: () -> Void
     @State private var exists: Bool = false
-    @State private var isEmpty: Bool = false
     @State private var matchingPaths: [String] = []
     @State private var sizeLoading: Bool = true
     @State private var size: Int64 = 0
 
     var body: some View {
-
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
             if !matchingPaths.isEmpty {
-                ForEach(matchingPaths, id: \.self) { matchedPath in
-                    HStack(spacing: 15) {
-                        // Selection checkbox - OUTSIDE the background
-                        Button(action: { isSelected.toggle() }) {
-                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(isSelected ? .blue : ThemeColors.shared(for: colorScheme).secondaryText)
-                                .font(.title3)
-                        }
-                        .buttonStyle(.plain)
-
-                        // Content with background
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Button {
-                                openInFinder(matchedPath)
-                            } label: {
-                                Image(systemName: "folder")
+                ForEach(Array(matchingPaths.enumerated()), id: \.element) { index, matchedPath in
+                    DirectoryListRow(
+                        name: URL(fileURLWithPath: matchedPath).lastPathComponent,
+                        path: matchedPath,
+                        verticalInset: 5,
+                        onOpen: { openInFinder(matchedPath) },
+                        leadingContent: {
+                            Button(action: { isSelected.toggle() }) {
+                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(isSelected ? .blue : ThemeColors.shared(for: colorScheme).secondaryText)
+                                    .font(.title3)
                             }
                             .buttonStyle(.plain)
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
 
-                            matchedPath.pathWithArrows()
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                                .font(.headline)
-
-                            Spacer()
-
+                            Button {
+                                openInFinder(matchedPath)
+                            } label: {
+                                Image(nsImage: NSWorkspace.shared.icon(forFile: matchedPath))
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: PageListMetrics.iconSize, height: PageListMetrics.iconSize)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                            .buttonStyle(.plain)
+                        },
+                        titleAccessory: {
+                            EmptyView()
+                        },
+                        trailingContent: {
                             Text(formatByte(size: size).human)
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-
-                            HStack(spacing: 10) {
-                                Button("Delete Folder") {
-                                    deleteFolder(matchedPath)
-                                }
-                                .buttonStyle(.borderless)
-                                .controlSize(.mini)
-                                .foregroundStyle(.red)
-                                .help("Delete the folder")
-
-                                Divider().frame(height: 10)
-
-                                Button("Delete Contents") {
-                                    deleteFolderContents(matchedPath)
-                                }
-                                .buttonStyle(.borderless)
-                                .controlSize(.mini)
-                                .foregroundStyle(.red)
-                                .disabled(isEmpty)
-                                .help("Delete all files within this folder")
-                                }
-
-                            }
-                            .onAppear {
-                                DispatchQueue.global(qos: .userInitiated).async {
-                                    if let url = URL(string: matchedPath) {
-                                        let calculatedSize = totalSizeOnDisk(for: url)
-
-                                        DispatchQueue.main.async {
-                                            self.size = calculatedSize
-                                        }
-                                    }
-                                }
-                            }
-
+                                .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(ThemeColors.shared(for: colorScheme).secondaryBG.clipShape(RoundedRectangle(cornerRadius: 8)))
+                    )
+                    .onAppear {
+                        DispatchQueue.global(qos: .userInitiated).async {
+                            let url = URL(fileURLWithPath: matchedPath)
+                            let calculatedSize = totalSizeOnDisk(for: url)
+
+                            DispatchQueue.main.async {
+                                self.size = calculatedSize
+                            }
+                        }
+                    }
+
+                    if index < matchingPaths.count - 1 {
+                        Divider()
                     }
                 }
             } else {
-                HStack {
-                    Text(expandTilde(path))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-
-                    Spacer()
-                    Text("Not Found")
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(ThemeColors.shared(for: colorScheme).secondaryBG.clipShape(RoundedRectangle(cornerRadius: 8)))
+                DirectoryListRow(
+                    name: URL(fileURLWithPath: expandTilde(path)).lastPathComponent,
+                    path: expandTilde(path),
+                    onOpen: {},
+                    leadingContent: {
+                        EmptyView()
+                    },
+                    titleAccessory: {
+                        EmptyView()
+                    },
+                    trailingContent: {
+                        Text("Not Found")
+                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                    }
+                )
             }
         }
         .onAppear {
@@ -577,12 +557,6 @@ struct PathRowView: View {
                     }
 
                     exists = !matchingPaths.isEmpty
-                    isEmpty = matchingPaths.allSatisfy { folder in
-                        if let innerContents = try? fileManager.contentsOfDirectory(atPath: folder) {
-                            return innerContents.filter { $0 != ".DS_Store" }.isEmpty
-                        }
-                        return true
-                    }
                 } catch {
                     exists = false
                     matchingPaths = []
@@ -600,12 +574,6 @@ struct PathRowView: View {
                         .map { (basePath as NSString).appendingPathComponent($0) }
 
                     exists = !matchingPaths.isEmpty
-                    isEmpty = matchingPaths.allSatisfy { folder in
-                        if let innerContents = try? fileManager.contentsOfDirectory(atPath: folder) {
-                            return innerContents.filter { $0 != ".DS_Store" }.isEmpty
-                        }
-                        return true
-                    }
                 } catch {
                     exists = false
                     matchingPaths = []
@@ -615,11 +583,6 @@ struct PathRowView: View {
             // Normal path handling
             exists = fileManager.fileExists(atPath: expandedPath)
             if exists {
-                if let contents = try? fileManager.contentsOfDirectory(atPath: expandedPath) {
-                    isEmpty = contents.filter { $0 != ".DS_Store" }.isEmpty // Exclude .DS_Store
-                } else {
-                    isEmpty = true
-                }
                 matchingPaths = [expandedPath]
             } else {
                 matchingPaths = []
@@ -638,35 +601,6 @@ struct PathRowView: View {
         }
     }
 
-    private func deleteFolderContents(_ matchedPath: String) {
-        let fileManager = FileManager.default
-        do {
-            let contents = try fileManager.contentsOfDirectory(atPath: matchedPath)
-            var contentURLs: [URL] = []
-            for item in contents {
-                let itemPath = (matchedPath as NSString).appendingPathComponent(item)
-                contentURLs.append(URL(fileURLWithPath: itemPath))
-            }
-            if !contentURLs.isEmpty {
-                let folderName = (matchedPath as NSString).lastPathComponent
-                let bundleName = "Development - \(folderName) Contents"
-                let _ = FileManagerUndo.shared.deleteFiles(at: contentURLs, bundleName: bundleName)
-            }
-            checkPath(path) // Recheck the state after deletion
-        } catch {
-            printOS("Error deleting contents of folder: \(error)")
-        }
-    }
-
-    private func deleteFolder(_ matchedPath: String) {
-        let folderName = (matchedPath as NSString).lastPathComponent
-        let bundleName = "Development - \(folderName)"
-        let url = URL(fileURLWithPath: matchedPath)
-        let result = FileManagerUndo.shared.deleteFiles(at: [url], bundleName: bundleName)
-        if result {
-            onDelete()
-        }
-    }
 }
 
 struct WorkspaceStorageCleanerView: View {
@@ -691,7 +625,7 @@ struct WorkspaceStorageCleanerView: View {
                 Image(systemName: "macwindow")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 30, height: 30)
+                    .frame(width: PageListMetrics.iconSize, height: PageListMetrics.iconSize)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Workspace Storage Cleaner")
                         .font(.headline)
@@ -973,7 +907,7 @@ struct PipPackageCleanerView: View {
                 Image(systemName: "shippingbox")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 30, height: 30)
+                    .frame(width: PageListMetrics.iconSize, height: PageListMetrics.iconSize)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Pip Packages")
                         .font(.headline)

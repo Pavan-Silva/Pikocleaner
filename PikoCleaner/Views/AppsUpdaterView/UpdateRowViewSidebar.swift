@@ -49,20 +49,20 @@ struct UpdateRowViewSidebar: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(alignment: .center, spacing: 12) {
+            HStack(alignment: .center, spacing: PageListMetrics.itemSpacing) {
                 // App icon
                 if let appIcon = app.appInfo.appIcon {
                     Image(nsImage: appIcon)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 30, height: 30)
+                        .frame(width: 40, height: 40)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
                     // Fallback to source icon with colored background
                     ZStack {
                         Circle()
                             .fill(sourceColor.opacity(0.2))
-                            .frame(width: 30, height: 30)
+                            .frame(width: 40, height: 40)
 
                         Image(systemName: sourceIcon)
                             .font(.system(size: 14, weight: .medium))
@@ -73,7 +73,7 @@ struct UpdateRowViewSidebar: View {
                 // App name and version
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: app.appInfo.appName)
-                        .font(.system(size: isSelected ? 14 : 12))
+                        .font(.title3)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -86,10 +86,10 @@ struct UpdateRowViewSidebar: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .frame(height: 35)
+            .frame(height: 40)
             .background(Color.white.opacity(0.000000001))
             .padding(.trailing)
-            .padding(.vertical, 5)
+            .padding(.vertical, PageListMetrics.rowVerticalInset)
         }
         .contentShape(Rectangle())
         .buttonStyle(.plain)

@@ -138,6 +138,54 @@ struct LipoView: View {
 
             VStack(alignment: .leading, spacing: 0) {
 
+                PageHeaderView(
+                    title: "Lipo",
+                    description: "Remove unused architectures from your app binaries to reduce app size"
+                ) {
+                    HStack(spacing: 0) {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                consoleManager.showConsole.toggle()
+                            }
+                        } label: {
+                            PageHeaderActionLabel(title: "Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
+                        }
+                        .help("Toggle console output")
+
+                        Menu {
+                            ForEach(LipoSortOption.allCases, id: \.self) { sortOption in
+                                Button {
+                                    selectedSort = sortOption
+                                } label: {
+                                    Label(sortOption.rawValue, systemImage: sortOption.systemImage)
+                                }
+                            }
+                        } label: {
+                            PageHeaderActionLabel(title: selectedSort.rawValue, systemImage: selectedSort.systemImage)
+                        }
+                        .menuIndicator(.hidden)
+                        .help("Sort by \(selectedSort.rawValue)")
+
+                        Button {
+                            refreshList()
+                        } label: {
+                            PageHeaderActionLabel(title: "Refresh", systemImage: "arrow.counterclockwise")
+                        }
+                        .disabled(isRefreshing)
+                        .help("Refresh app list")
+
+                        Button {
+                            if GlobalConsoleManager.shared.showConsole {
+                                GlobalConsoleManager.shared.showConsole.toggle()
+                            }
+                            infoSidebar.toggle()
+                        } label: {
+                            PageHeaderActionLabel(title: "Info", systemImage: "sidebar.trailing")
+                        }
+                        .help("See lipo details")
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: 0) {
 
                     // Add this section back - the main app list content
@@ -165,6 +213,7 @@ struct LipoView: View {
                     .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
                     .controlGroup(Capsule(style: .continuous), level: .primary)
                     .padding(.top, 5)
+                    .padding(.horizontal, 20)
 
                     if universalApps.isEmpty {
                         VStack {
@@ -193,21 +242,28 @@ struct LipoView: View {
                             Spacer()
 
                             if let lastRefresh = lastRefreshDate {
-                                TimelineView(.periodic(from: lastRefresh, by: 1.0)) { _ in
-                                    Text("Updated \(formatRelativeTime(lastRefresh))")
-                                        .font(.caption)
-                                        .monospacedDigit()
-                                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                                TimelineView(.periodic(from: lastRefresh, by: 60.0)) { timeline in
+                                    Group {
+                                        if timeline.date.timeIntervalSince(lastRefresh) < 60 {
+                                            Text("Updated now")
+                                        } else {
+                                            Text("Updated \(formatRelativeTime(lastRefresh))")
+                                        }
+                                    }
+                                    .font(.caption)
+                                    .monospacedDigit()
+                                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                                 }
                             }
 
                             LipoLegend()
                         }
                         .padding(.vertical)
+                        .padding(.horizontal, 20)
 
                         ScrollView {
-                            LazyVStack(spacing: 10) {
-                                ForEach(universalApps, id: \.path) { app in
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(universalApps.enumerated()), id: \.offset) { index, app in
                                     LipoAppRowView(
                                         app: app,
                                         selectedApps: $selectedApps,
@@ -215,16 +271,20 @@ struct LipoView: View {
                                         savingsAllApps: $savingsAllApps,
                                         bundleAllApps: $bundleAllApps
                                     )
+
+                                    if index < universalApps.count - 1 {
+                                        Divider()
+                                    }
                                 }
                             }
                         }
                         .scrollIndicators(scrollIndicators ? .automatic : .never)
+                        .padding(.horizontal, 20)
                     }
                 }
             }
             .opacity(infoSidebar ? 0.5 : 1)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 20)
             .safeAreaInset(edge: .bottom) {
                 if !selectedApps.isEmpty {
                     HStack {
@@ -290,7 +350,8 @@ struct LipoView: View {
 
                         Spacer()
                     }
-                    .padding([.horizontal, .bottom])
+                    .padding(.horizontal, 20)
+                    .padding(.bottom)
                 }
             }
 
@@ -347,66 +408,6 @@ struct LipoView: View {
             refreshList()
         }
         .pikoToolbarBackground()
-        .toolbar {
-            TahoeToolbarItem(placement: .navigation) {
-                VStack(alignment: .leading) {
-                    Text("Lipo").foregroundStyle(
-                        ThemeColors.shared(for: colorScheme).primaryText
-                    ).font(.title2).fontWeight(.bold)
-                    Text(
-                        "Remove unused architectures from your app binaries to reduce app size"
-                    )
-                    .font(.callout).foregroundStyle(
-                        ThemeColors.shared(for: colorScheme).secondaryText)
-                }
-            }
-
-            ToolbarItem { Spacer() }
-
-            TahoeToolbarItem(isGroup: true) {
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        consoleManager.showConsole.toggle()
-                    }
-                } label: {
-                    Label("Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
-                }
-                .help("Toggle console output")
-                
-                Menu {
-                    ForEach(LipoSortOption.allCases, id: \.self) { sortOption in
-                        Button {
-                            selectedSort = sortOption
-                        } label: {
-                            Label(sortOption.rawValue, systemImage: sortOption.systemImage)
-                        }
-                    }
-                } label: {
-                    Label(selectedSort.rawValue, systemImage: selectedSort.systemImage)
-                }
-                .labelStyle(.titleAndIcon)
-                .menuIndicator(.hidden)
-
-                Button {
-                    refreshList()
-                } label: {
-                    Label("Refresh", systemImage: "arrow.counterclockwise")
-                }
-                .disabled(isRefreshing)
-
-                Button {
-                    if GlobalConsoleManager.shared.showConsole {
-                        GlobalConsoleManager.shared.showConsole.toggle()
-                    }
-                    infoSidebar.toggle()
-                } label: {
-                    Label("Info", systemImage: "sidebar.trailing")
-                }
-                .help("See lipo details")
-
-            }
-
-        }
     }
 
     private func refreshList() {
@@ -564,10 +565,30 @@ struct LipoAppRowView: View {
     @State private var calculatedSavings: UInt64?
 
     var body: some View {
-        HStack(spacing: 15) {
+        HStack(spacing: PageListMetrics.itemSpacing) {
             appToggle
-            appContentView
+            Image(nsImage: app.appIcon ?? NSWorkspace.shared.icon(forFile: app.path.path))
+                .resizable()
+                .scaledToFit()
+                .frame(width: 36, height: 36)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(app.appName)
+                    .font(.title3)
+                    .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+                    .lineLimit(1)
+
+                HStack(spacing: 8) {
+                    appSizeInfo
+                    savingsPercentage
+                }
+            }
+
+            Spacer()
+            sizesDisplay
         }
+        .padding(.vertical, PageListMetrics.rowVerticalInset)
         .onAppear {
             // Priority 1: Check AppInfo cache (from SwiftData background pre-calculation)
             if let cachedSavings = app.lipoSavings {
@@ -596,35 +617,6 @@ struct LipoAppRowView: View {
             EmptyView()
         }
         .buttonStyle(CircleCheckboxButtonStyle(isSelected: selectedApps.contains(app.path.path)))
-    }
-
-    private var appContentView: some View {
-        VStack {
-            HStack {
-                appIconAndName
-                Divider()
-                appSizeInfo
-                Divider()
-                savingsPercentage
-                Spacer()
-                sizesDisplay
-            }
-            .padding()
-        }
-        .background(ThemeColors.shared(for: colorScheme).secondaryBG)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var appIconAndName: some View {
-        HStack {
-            if let icon = app.appIcon {
-                Image(nsImage: icon)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 20, height: 20)
-            }
-            Text(app.appName).font(.title3)
-        }
     }
 
     private var appSizeInfo: some View {

@@ -68,7 +68,69 @@ struct ZombieView: View {
 
     var body: some View {
 
-        VStack(alignment: .center) {
+        VStack(alignment: .leading, spacing: 0) {
+
+            PageHeaderView(
+                title: "Orphaned Files",
+                description: "Remaining files and folders from previous applications"
+            ) {
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            consoleManager.showConsole.toggle()
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
+                    }
+                    .help("Toggle console output")
+
+                    Button {
+                        viewMode = viewMode == .simple ? .categorized : .simple
+                    } label: {
+                        PageHeaderActionLabel(title: "View", systemImage: viewMode == .simple ? "list.bullet" : "checklist")
+                    }
+                    .help(viewMode == .simple ? "Switch to categorized view" : "Switch to simple view")
+
+                    Button {
+                        let allOptions = SortOptionList.allCases
+                        if let currentIndex = allOptions.firstIndex(of: selectedSort) {
+                            let nextIndex = (currentIndex + 1) % allOptions.count
+                            selectedSort = allOptions[nextIndex]
+                            updateMemoizedFiles(for: searchZ, selectedSort: selectedSort, force: true)
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: selectedSort.title, systemImage: selectedSort.systemImage)
+                    }
+                    .help("Sort by \(selectedSort.title). Click to cycle through options")
+
+                    if appState.showProgress {
+                        Button {
+                            stopSearch()
+                        } label: {
+                            PageHeaderActionLabel(title: "Stop search", systemImage: "stop.circle")
+                        }
+                        .help("Stop search")
+                    } else {
+                        Button {
+                            startSearch()
+                        } label: {
+                            PageHeaderActionLabel(title: "Refresh", systemImage: "arrow.counterclockwise")
+                        }
+                        .help("Refresh orphaned files")
+                    }
+
+                    Button {
+                        if GlobalConsoleManager.shared.showConsole {
+                            GlobalConsoleManager.shared.showConsole.toggle()
+                        }
+                        infoSidebar.toggle()
+                    } label: {
+                        PageHeaderActionLabel(title: "Info", systemImage: "sidebar.trailing")
+                    }
+                    .help("See details")
+                }
+            }
+
             ZStack {
                     VStack(spacing: 0) {
 
@@ -117,11 +179,17 @@ struct ZombieView: View {
                             Spacer()
 
                             if let lastRefresh = lastRefreshDate {
-                                TimelineView(.periodic(from: lastRefresh, by: 1.0)) { _ in
-                                    Text("Updated \(formatRelativeTime(lastRefresh))")
-                                        .font(.caption)
-                                        .monospacedDigit()
-                                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                                TimelineView(.periodic(from: lastRefresh, by: 60.0)) { timeline in
+                                    Group {
+                                        if timeline.date.timeIntervalSince(lastRefresh) < 60 {
+                                            Text("Updated now")
+                                        } else {
+                                            Text("Updated \(formatRelativeTime(lastRefresh))")
+                                        }
+                                    }
+                                    .font(.caption)
+                                    .monospacedDigit()
+                                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                                 }
                             }
                         }
@@ -330,78 +398,6 @@ struct ZombieView: View {
             startSearch()
         }
         .pikoToolbarBackground()
-        .toolbar {
-            TahoeToolbarItem(placement: .navigation) {
-                VStack(alignment: .leading){
-                    Text("Orphaned Files").foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText).font(.title2).fontWeight(.bold)
-                    Text("Remaining files and folders from previous applications")
-                        .font(.callout).foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                }
-            }
-
-
-            ToolbarItem { Spacer() }
-
-            TahoeToolbarItem(isGroup: true) {
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        consoleManager.showConsole.toggle()
-                    }
-                } label: {
-                    Label("Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
-                }
-                .help("Toggle console output")
-
-                Button {
-                    viewMode = viewMode == .simple ? .categorized : .simple
-                } label: {
-                    Label("View", systemImage: viewMode == .simple ? "list.bullet" : "checklist")
-                }
-                .help(viewMode == .simple ? "Switch to categorized view" : "Switch to simple view")
-
-                Button {
-                    // Cycle through sort options
-                    let allOptions = SortOptionList.allCases
-                    if let currentIndex = allOptions.firstIndex(of: selectedSort) {
-                        let nextIndex = (currentIndex + 1) % allOptions.count
-                        selectedSort = allOptions[nextIndex]
-                        updateMemoizedFiles(for: searchZ, selectedSort: selectedSort, force: true)
-                    }
-                } label: {
-                    Label(selectedSort.title, systemImage: selectedSort.systemImage)
-                }
-                .help("Sort by \(selectedSort.title). Click to cycle through options")
-
-                if appState.showProgress {
-                    Button {
-                        stopSearch()
-                    } label: {
-                        Label("Stop", systemImage: "stop.circle")
-                    }
-                } else {
-                    Button {
-                        startSearch()
-                    } label: {
-                        Label("Refresh", systemImage: "arrow.counterclockwise")
-                    }
-                }
-
-                Button {
-                    if GlobalConsoleManager.shared.showConsole {
-                        GlobalConsoleManager.shared.showConsole.toggle()
-                    }
-                    infoSidebar.toggle()
-                } label: {
-                    Label("Info", systemImage: "sidebar.trailing")
-                }
-                .help("See details")
-
-
-            }
-
-
-        }
-
     }
 
     private func startSearch() {
@@ -685,8 +681,6 @@ struct ZombieFileDetailsItem: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var fsm: FolderSettingsManager
     @Environment(\.colorScheme) var colorScheme
-    @State private var isHovered = false
-    @AppStorage("settings.interface.animationEnabled") private var animationEnabled: Bool = true
     let size: Int64?
     let icon: Image?
     let path: URL
@@ -695,66 +689,36 @@ struct ZombieFileDetailsItem: View {
     @Binding var isSelected: Bool
 
     var body: some View {
-        HStack(alignment: .center, spacing: 15) {
-            // Selection checkbox
-            Button(action: { isSelected.toggle() }) {
-                EmptyView()
-            }
-            .buttonStyle(CircleCheckboxButtonStyle(isSelected: isSelected))
-
-            if let appIcon = icon {
-                appIcon
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 30, height: 30)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .center) {
-                    Text(showLocalized(url: path))
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                        .font(.title3)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .help(path.lastPathComponent)
-                        .overlay {
-                            if isHovered {
-                                VStack {
-                                    Spacer()
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(ThemeColors.shared(for: colorScheme).primaryText.opacity(0.5))
-                                        .frame(height: 1.5)
-                                        .offset(y: 3)
-                                }
-                            }
-                        }
-
-                    if let imageView = folderImages(for: path.path) {
-                        imageView
-                    }
-                }
-
-                path.path.pathWithArrows(separatorColor: ThemeColors.shared(for: colorScheme).primaryText)
-                    .font(.footnote)
-                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                    .help(path.path)
-            }
-            .onTapGesture {
+        DirectoryListRow(
+            name: showLocalized(url: path),
+            path: path.path,
+            onOpen: {
                 NSWorkspace.shared.selectFile(path.path, inFileViewerRootedAtPath: path.deletingLastPathComponent().path)
-            }
-            .onHover { hovering in
-                withAnimation(Animation.easeInOut(duration: animationEnabled ? 0.35 : 0)) {
-                    self.isHovered = hovering
+            },
+            leadingContent: {
+                Button(action: { isSelected.toggle() }) {
+                    EmptyView()
                 }
+                .buttonStyle(CircleCheckboxButtonStyle(isSelected: isSelected))
+
+                if let appIcon = icon {
+                    appIcon
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: PageListMetrics.iconSize, height: PageListMetrics.iconSize)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            },
+            titleAccessory: {
+                if let imageView = folderImages(for: path.path) {
+                    imageView
+                }
+            },
+            trailingContent: {
+                Text(verbatim: "\(formatByte(size: size!).human)")
+                    .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
             }
-
-            Spacer()
-
-            Text(verbatim: "\(formatByte(size: size!).human)")
-                .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-        }
-        .padding(.vertical, 8)
+        )
         .contextMenu {
             if path.pathExtension == "app" {
                 Button("Open \(path.deletingPathExtension().lastPathComponent)") {

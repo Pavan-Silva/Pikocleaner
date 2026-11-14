@@ -27,6 +27,18 @@ enum HomebrewViewSection: String, CaseIterable {
     }
 }
 
+struct HomebrewPackageIcon: View {
+    let isCask: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Image(systemName: isCask ? "app" : "shippingbox")
+            .font(.system(size: 22, weight: .regular))
+            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+            .frame(width: PageListMetrics.iconSize, height: PageListMetrics.iconSize)
+    }
+}
+
 struct HomebrewView: View {
     @EnvironmentObject var brewManager: HomebrewManager
     @ObservedObject private var brewController = HomebrewController.shared
@@ -42,6 +54,55 @@ struct HomebrewView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            PageHeaderView(
+                title: "Homebrew Manager",
+                description: "Manage Homebrew packages, taps, and maintenance"
+            ) {
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            consoleManager.showConsole.toggle()
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
+                    }
+                    .help("Toggle console output")
+
+                    if brewController.isOperationRunning {
+                        Button {
+                            brewController.cancelOperation()
+                        } label: {
+                            PageHeaderActionLabel(title: "Stop Homebrew operation", systemImage: "stop.circle")
+                        }
+                        .help("Cancel running Homebrew operation")
+                    } else {
+                        Button {
+                            Task {
+                                switch selectedSection {
+                                case .browse:
+                                    await brewManager.loadInstalledPackages()
+                                    await brewManager.loadAvailablePackages(appState: appState, forceRefresh: true)
+                                    let folderPaths = await MainActor.run { FolderSettingsManager.shared.folderPaths }
+                                    await loadAppsAsync(folderPaths: folderPaths, useStreaming: false)
+                                    await MainActor.run {
+                                        brewManager.updateInstalledCategories()
+                                    }
+                                case .taps:
+                                    await brewManager.loadTaps()
+                                case .autoUpdate:
+                                    HomebrewAutoUpdateManager.shared.refreshState()
+                                case .maintenance:
+                                    await brewManager.refreshMaintenance()
+                                }
+                            }
+                        } label: {
+                            PageHeaderActionLabel(title: "Refresh", systemImage: "arrow.counterclockwise")
+                        }
+                        .help("Refresh \(selectedSection.rawValue.lowercased()) data")
+                    }
+                }
+            }
+
             if !HomebrewController.shared.isInstalled {
                 // Show message when Homebrew is not installed
                 VStack(spacing: 20) {
@@ -185,71 +246,7 @@ struct HomebrewView: View {
                 }
             }
         }
-        .toolbar {
-            TahoeToolbarItem(placement: .navigation) {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Homebrew Manager")
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        Text("Manage Homebrew packages, taps, and maintenance")
-                            .font(.callout)
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                    }
-
-                }
-
-            }
-
-            ToolbarItem { Spacer() }
-
-            TahoeToolbarItem(isGroup: true) {
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        consoleManager.showConsole.toggle()
-                    }
-                } label: {
-                    Label("Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
-                }
-                .help("Toggle console output")
-
-                if brewController.isOperationRunning {
-                    Button {
-                        brewController.cancelOperation()
-                    } label: {
-                        Label("Stop", systemImage: "stop.circle")
-                    }
-                    .help("Cancel running Homebrew operation")
-                } else {
-                    Button {
-                        Task {
-                            switch selectedSection {
-                            case .browse:
-                                await brewManager.loadInstalledPackages()
-                                await brewManager.loadAvailablePackages(appState: appState, forceRefresh: true)
-                                // Refresh sortedApps to pick up newly installed casks with proper size
-                                let folderPaths = await MainActor.run { FolderSettingsManager.shared.folderPaths }
-                                await loadAppsAsync(folderPaths: folderPaths, useStreaming: false)
-                                // Update categories to pick up latest app names from sortedApps and re-sort
-                                await MainActor.run {
-                                    brewManager.updateInstalledCategories()
-                                }
-                            case .taps:
-                                await brewManager.loadTaps()
-                            case .autoUpdate:
-                                HomebrewAutoUpdateManager.shared.refreshState()
-                            case .maintenance:
-                                await brewManager.refreshMaintenance()
-                            }
-                        }
-                    } label: {
-                        Label("Refresh", systemImage: "arrow.counterclockwise")
-                    }
-                    .help("Refresh \(selectedSection.rawValue.lowercased()) data")
-                }
-            }
-        }
+        .pikoToolbarBackground()
         .onChange(of: consoleManager.showConsole) { newValue in
             Task { @MainActor in
                 brewController.consoleEnabled = newValue

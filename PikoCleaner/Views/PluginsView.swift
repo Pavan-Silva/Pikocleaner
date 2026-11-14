@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum PluginSortOption: String, CaseIterable {
     case name = "Name"
@@ -117,6 +118,44 @@ struct PluginsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
+            PageHeaderView(
+                title: "Plugin Manager",
+                description: "Manage third-party plugins and extensions"
+            ) {
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            consoleManager.showConsole.toggle()
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
+                    }
+                    .help("Toggle console output")
+
+                    Menu {
+                        ForEach(PluginSortOption.allCases, id: \.self) { option in
+                            Button {
+                                sortOption = option
+                            } label: {
+                                Label(option.displayName, systemImage: option.systemImage)
+                            }
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: sortOption.displayName, systemImage: sortOption.systemImage)
+                    }
+                    .menuIndicator(.hidden)
+                    .help("Sort by \(sortOption.displayName)")
+
+                    Button {
+                        refreshPlugins()
+                    } label: {
+                        PageHeaderActionLabel(title: "Refresh", systemImage: "arrow.counterclockwise")
+                    }
+                    .disabled(isLoading)
+                    .help("Refresh plugins")
+                }
+            }
+
             // Search bar
             HStack {
                 Image(systemName: "magnifyingglass")
@@ -140,6 +179,7 @@ struct PluginsView: View {
             .padding(.vertical, 8)
             .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
             .controlGroup(Capsule(style: .continuous), level: .primary)
+            .padding(.horizontal, 20)
             .padding(.top, 5)
 
             if isLoading && allPlugins.isEmpty {
@@ -180,15 +220,22 @@ struct PluginsView: View {
                     Spacer()
 
                     if let lastRefresh = lastRefreshDate {
-                        TimelineView(.periodic(from: lastRefresh, by: 1.0)) { _ in
-                            Text("Updated \(formatRelativeTime(lastRefresh))")
-                                .font(.caption)
-                                .monospacedDigit()
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                        TimelineView(.periodic(from: lastRefresh, by: 60.0)) { timeline in
+                            Group {
+                                if timeline.date.timeIntervalSince(lastRefresh) < 60 {
+                                    Text("Updated now")
+                                } else {
+                                    Text("Updated \(formatRelativeTime(lastRefresh))")
+                                }
+                            }
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                         }
                     }
                 }
                 .padding(.vertical)
+                .padding(.horizontal, 20)
 
                 ScrollView {
                     LazyVStack(spacing: 12) {
@@ -196,8 +243,8 @@ struct PluginsView: View {
                             if let categoryPlugins = groupedPlugins[category] {
                                 GroupBox {
                                     if !collapsedCategories.contains(category) {
-                                        LazyVStack(spacing: 8) {
-                                            ForEach(categoryPlugins, id: \.id) { plugin in
+                                        LazyVStack(spacing: 0) {
+                                            ForEach(Array(categoryPlugins.enumerated()), id: \.offset) { index, plugin in
                                                 if category == "Audio" {
                                                     AudioPluginRowView(
                                                         plugin: plugin,
@@ -243,6 +290,10 @@ struct PluginsView: View {
                                                         }
                                                     }
                                                 }
+
+                                                if index < categoryPlugins.count - 1 {
+                                                    Divider()
+                                                }
                                             }
                                         }
                                     }
@@ -260,11 +311,11 @@ struct PluginsView: View {
                     }
                 }
                 .scrollIndicators(scrollIndicators ? .automatic : .never)
+                .padding(.horizontal, 20)
             }
 
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 20)
         .onAppear {
             // Start loading plugins immediately but non-blocking
             if allPlugins.isEmpty {
@@ -316,63 +367,11 @@ struct PluginsView: View {
 
                     Spacer()
                 }
-                .padding([.horizontal, .bottom])
+                .padding(.horizontal, 20)
+                .padding(.bottom)
             }
         }
         .pikoToolbarBackground()
-        .toolbar {
-            TahoeToolbarItem(placement: .navigation) {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Plugin Manager")
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        Text("Manage third-party plugins and extensions")
-                            .font(.callout)
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                    }
-
-                }
-
-            }
-
-            ToolbarItem { Spacer() }
-
-            TahoeToolbarItem(isGroup: true) {
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        consoleManager.showConsole.toggle()
-                    }
-                } label: {
-                    Label("Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
-                }
-                .help("Toggle console output")
-                
-                Menu {
-                    ForEach(PluginSortOption.allCases, id: \.self) { option in
-                        Button {
-                            sortOption = option
-                        } label: {
-                            Label(option.displayName, systemImage: option.systemImage)
-                        }
-                    }
-                } label: {
-                    Label(sortOption.displayName, systemImage: sortOption.systemImage)
-                }
-                .labelStyle(.titleAndIcon)
-                .menuIndicator(.hidden)
-
-                Button {
-                    refreshPlugins()
-                } label: {
-                    Label("Refresh", systemImage: "arrow.counterclockwise")
-                }
-                .disabled(isLoading)
-
-
-            }
-        }
     }
 
     // MARK: - Helper Functions
@@ -846,6 +845,18 @@ struct PluginCategorySection: View {
 
 // MARK: - Plugin Row View
 
+private struct PluginTypeIcon: View {
+    let customIcon: NSImage?
+
+    var body: some View {
+        Image(nsImage: customIcon ?? NSWorkspace.shared.icon(for: UTType(filenameExtension: "plugin") ?? .bundle))
+            .resizable()
+            .scaledToFit()
+            .frame(width: 40, height: 40)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
 struct PluginRowView: View {
     let plugin: PluginInfo
     let isSelected: Bool
@@ -857,82 +868,62 @@ struct PluginRowView: View {
     let onToggleSelection: () -> Void
     @Environment(\.colorScheme) var colorScheme
     @State private var isPerformingAction = false
-    @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 15) {
+        HStack(alignment: .top, spacing: 12) {
             // Selection checkbox - OUTSIDE the background
             Button(action: onToggleSelection) {
                 EmptyView()
             }
             .buttonStyle(CircleCheckboxButtonStyle(isSelected: isSelected))
+            .padding(.top, 10)
 
             // Content with background
-            HStack(alignment: .center, spacing: 12) {
-                // Plugin icon and type indicator
-            VStack(spacing: 4) {
-                ZStack {
-                    if plugin.customIcon == nil {
-                        Circle()
-                            .fill(pluginColor.opacity(0.2))
-                            .frame(width: 32, height: 32)
-                    }
+            HStack(alignment: .center, spacing: PageListMetrics.itemSpacing) {
+                PluginTypeIcon(customIcon: plugin.customIcon)
 
-                    if let customIcon = plugin.customIcon {
-                        Image(nsImage: customIcon)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 32, height: 32)
-                    } else {
-                        Image(systemName: pluginIcon)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(pluginColor)
-                    }
-                }
-            }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(plugin.name)
+                        .font(.title3)
+                        .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+                        .lineLimit(1)
 
-            // Plugin details
-            VStack(alignment: .leading, spacing: 4) {
-                Text(plugin.name)
-                    .font(.headline)
-                    .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                    .lineLimit(1)
-
-                Text("Path: \(plugin.path)")
-                    .font(.caption)
-                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-
-                HStack {
-                    Text("Category: \(plugin.category)")
-                        .font(.caption)
+                    Text(plugin.path)
+                        .font(.footnote)
                         .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(plugin.path)
 
-                    Text(verbatim: "•")
-                        .font(.caption)
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-
-                    Text("Size: \(formatFileSize(cachedSize ?? plugin.size ?? 0))")
-                        .font(.caption)
-                        .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-
-                    Spacer()
-                }
-
-                // Bundle ID for .driver bundles
-                if let bundleId = plugin.bundleId, !bundleId.isEmpty {
                     HStack {
-                        Text("Bundle ID:")
+                        Text(plugin.category)
                             .font(.caption)
                             .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
 
-                        Text(bundleId)
+                        Text(verbatim: "•")
                             .font(.caption)
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                            .textSelection(.enabled)
+                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+
+                        Text(formatFileSize(cachedSize ?? plugin.size ?? 0))
+                            .font(.caption)
+                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
 
                         Spacer()
+                    }
+
+                    if let bundleId = plugin.bundleId, !bundleId.isEmpty {
+                        HStack {
+                            Text("Bundle ID:")
+                                .font(.caption)
+                                .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+
+                            Text(bundleId)
+                                .font(.caption)
+                                .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+                                .textSelection(.enabled)
+
+                            Spacer()
+                        }
                     }
                 }
             }
@@ -940,49 +931,52 @@ struct PluginRowView: View {
             Spacer()
 
             // Action buttons
-            VStack(spacing: 6) {
-                HStack(spacing: 10) {
-                    Button("View") {
+            if isPerformingAction {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 32, height: 32)
+            } else {
+                HStack(spacing: 0) {
+                    Button {
                         openInFinder(plugin.path)
+                    } label: {
+                        Image(systemName: "eye")
+                            .font(.system(size: 14))
                     }
-                    .buttonStyle(.borderless)
-                    .controlSize(.mini)
-                    .foregroundStyle(.blue)
+                    .buttonStyle(ControlGroupButtonStyle(
+                        foregroundColor: ThemeColors.shared(for: colorScheme).secondaryText,
+                        shape: Capsule(style: .continuous),
+                        level: .primary,
+                        verticalPadding: 8,
+                        horizontalPadding: 9,
+                        skipControlGroup: true
+                    ))
                     .disabled(isPerformingAction)
                     .help("Show in Finder")
+                    .accessibilityLabel("Show in Finder")
 
-                    Divider().frame(height: 10)
-
-                    Button("Delete") {
+                    Button {
                         onRemove()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14))
                     }
-                    .buttonStyle(.borderless)
-                    .controlSize(.mini)
-                    .foregroundStyle(.red)
+                    .buttonStyle(ControlGroupButtonStyle(
+                        foregroundColor: .red,
+                        shape: Capsule(style: .continuous),
+                        level: .primary,
+                        verticalPadding: 8,
+                        horizontalPadding: 9,
+                        skipControlGroup: true
+                    ))
                     .disabled(isPerformingAction)
                     .help("Delete plugin")
+                    .accessibilityLabel("Delete plugin")
                 }
-
-                    if isPerformingAction {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    }
-                }
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ?
-                        ThemeColors.shared(for: colorScheme).secondaryBG.opacity(0.8) :
-                        ThemeColors.shared(for: colorScheme).secondaryBG
-                    )
-            )
-            .onHover { hovering in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isHovered = hovering
-                }
+                .controlGroup(Capsule(style: .continuous), level: .primary)
             }
         }
+        .padding(.vertical, PageListMetrics.rowVerticalInset)
         .onAppear {
             // Lazy size calculation - only compute when row appears
             if cachedSize == nil {
@@ -1001,56 +995,6 @@ struct PluginRowView: View {
                     }
                 }
             }
-        }
-    }
-
-    private var pluginColor: Color {
-        switch plugin.category {
-        case "Audio":
-            return .purple
-        case "PreferencePanes":
-            return .blue
-        case "QuickLook":
-            return .green
-        case "Screen Savers":
-            return .orange
-        case "Internet Plug-Ins":
-            return .red
-        case "ColorPickers":
-            return .pink
-        case "Fonts":
-            return .brown
-        case "Safari Extensions":
-            return .cyan
-        case "Widgets":
-            return .teal
-        default:
-            return .gray
-        }
-    }
-
-    private var pluginIcon: String {
-        switch plugin.category {
-        case "Audio":
-            return "waveform"
-        case "PreferencePanes":
-            return "gearshape"
-        case "QuickLook":
-            return "magnifyingglass"
-        case "Screen Savers":
-            return "display"
-        case "Internet Plug-Ins":
-            return "globe"
-        case "ColorPickers":
-            return "paintpalette"
-        case "Fonts":
-            return "textformat"
-        case "Safari Extensions":
-            return "safari"
-        case "Widgets":
-            return "square.grid.3x3"
-        default:
-            return "puzzlepiece"
         }
     }
 
@@ -1089,7 +1033,6 @@ struct AudioPluginRowView: View {
     @EnvironmentObject var locations: Locations
     @Environment(\.colorScheme) var colorScheme
     @State private var isPerformingAction = false
-    @State private var isHovered = false
     @State private var isExpanded = false
     @State private var relatedFiles: [FileSearchResult] = []
     @State private var isSearching = false
@@ -1097,64 +1040,38 @@ struct AudioPluginRowView: View {
     @State private var selectedRelatedFiles: Set<UUID> = []
 
     var body: some View {
-        HStack(spacing: 15) {
-            // Selection checkbox - OUTSIDE the background
-            Button(action: {
-                // When selecting/deselecting plugin, also select/deselect all related files
-                if !isSelected {
-                    // Plugin is about to be selected, select all related files
-                    selectedRelatedFiles = Set(relatedFiles.map { $0.id })
-                } else {
-                    // Plugin is about to be deselected, deselect all related files
-                    selectedRelatedFiles.removeAll()
-                }
-                onToggleSelection()
-            }) {
-                EmptyView()
-            }
-            .buttonStyle(CircleCheckboxButtonStyle(isSelected: isSelected))
-
-            // Content with background
-            VStack(alignment: .leading, spacing: 0) {
-                // Main plugin row
-                HStack(alignment: .center, spacing: 12) {
-                    // Plugin icon and type indicator
-                VStack(spacing: 4) {
-                    ZStack {
-                        if plugin.customIcon == nil {
-                            Circle()
-                                .fill(pluginColor.opacity(0.2))
-                                .frame(width: 32, height: 32)
-                        }
-
-                        if let customIcon = plugin.customIcon {
-                            Image(nsImage: customIcon)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 32, height: 32)
-                        } else {
-                            Image(systemName: pluginIcon)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(pluginColor)
-                        }
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                Button(action: {
+                    if !isSelected {
+                        selectedRelatedFiles = Set(relatedFiles.map { $0.id })
+                    } else {
+                        selectedRelatedFiles.removeAll()
                     }
+                    onToggleSelection()
+                }) {
+                    EmptyView()
                 }
+                .buttonStyle(CircleCheckboxButtonStyle(isSelected: isSelected))
+
+                PluginTypeIcon(customIcon: plugin.customIcon)
 
                 // Plugin details
                 VStack(alignment: .leading, spacing: 4) {
                     Text(plugin.name)
-                        .font(.headline)
+                        .font(.title3)
                         .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
                         .lineLimit(1)
 
-                    Text("Path: \(plugin.path)")
-                        .font(.caption)
+                    Text(plugin.path)
+                        .font(.footnote)
                         .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                        .help(plugin.path)
 
                     HStack {
-                        Text("Category: \(plugin.category)")
+                        Text(plugin.category)
                             .font(.caption)
                             .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
 
@@ -1162,7 +1079,7 @@ struct AudioPluginRowView: View {
                             .font(.caption)
                             .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
 
-                        Text("Size: \(formatFileSize(cachedSize ?? plugin.size ?? 0))")
+                        Text(formatFileSize(cachedSize ?? plugin.size ?? 0))
                             .font(.caption)
                             .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
 
@@ -1188,44 +1105,69 @@ struct AudioPluginRowView: View {
 
                 Spacer()
 
-                // Action buttons
                 if isPerformingAction {
                     ProgressView()
-                        .scaleEffect(0.7)
-                }
+                        .controlSize(.small)
+                        .frame(width: 32, height: 32)
+                } else {
+                    HStack(spacing: 0) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isExpanded.toggle()
+                            }
+                        } label: {
+                            Image(systemName: isExpanded ? "chevron.up" : "magnifyingglass")
+                                .font(.system(size: 14))
+                        }
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: ThemeColors.shared(for: colorScheme).accent,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            verticalPadding: 8,
+                            horizontalPadding: 9,
+                            skipControlGroup: true
+                        ))
+                        .help(isExpanded ? "Close related files search" : "Search for related files")
+                        .accessibilityLabel(isExpanded ? "Close related files search" : "Search for related files")
 
-                Button(isExpanded ? "Close" : "Search") {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isExpanded.toggle()
+                        Button {
+                            openInFinder(plugin.path)
+                        } label: {
+                            Image(systemName: "eye")
+                                .font(.system(size: 14))
+                        }
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: ThemeColors.shared(for: colorScheme).secondaryText,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            verticalPadding: 8,
+                            horizontalPadding: 9,
+                            skipControlGroup: true
+                        ))
+                        .help("Show in Finder")
+                        .accessibilityLabel("Show in Finder")
+
+                        Button {
+                            deletePluginAndRelatedFiles()
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 14))
+                        }
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: .red,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            verticalPadding: 8,
+                            horizontalPadding: 9,
+                            skipControlGroup: true
+                        ))
+                        .help("Delete plugin and selected related files")
+                        .accessibilityLabel("Delete plugin and selected related files")
                     }
+                    .controlGroup(Capsule(style: .continuous), level: .primary)
                 }
-                .buttonStyle(.borderless)
-                .controlSize(.mini)
-                .foregroundStyle(.blue)
-                .disabled(isPerformingAction)
-                .help(isExpanded ? "Close related files search" : "Search for related files")
-
-                
-                Button("View") {
-                    openInFinder(plugin.path)
-                }
-                .buttonStyle(.borderless)
-                .controlSize(.mini)
-                .foregroundStyle(.blue)
-                .disabled(isPerformingAction)
-                .help("Show in Finder")
-
-
-                Button("Delete") {
-                    deletePluginAndRelatedFiles()
-                }
-                .buttonStyle(.borderless)
-                .controlSize(.mini)
-                .foregroundStyle(.red)
-                .disabled(isPerformingAction)
-                .help("Delete plugin and selected related files")
             }
-            .padding()
+            .padding(.horizontal)
 
             // Expandable related files section
             if isExpanded {
@@ -1242,7 +1184,7 @@ struct AudioPluginRowView: View {
                                 .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                         }
                         .padding(.horizontal)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, PageListMetrics.rowVerticalInset)
                     } else if relatedFiles.isEmpty {
                         Text("No related files found")
                             .font(.caption)
@@ -1318,19 +1260,7 @@ struct AudioPluginRowView: View {
                     .transition(.opacity)
                 }
             }
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ?
-                        ThemeColors.shared(for: colorScheme).secondaryBG.opacity(0.8) :
-                        ThemeColors.shared(for: colorScheme).secondaryBG
-                    )
-            )
-            .onHover { hovering in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isHovered = hovering
-                }
-            }
-        }
+        .padding(.vertical, 8)
         .onAppear {
             // Lazy size calculation - only compute when row appears
             if cachedSize == nil {
@@ -1511,14 +1441,6 @@ struct AudioPluginRowView: View {
                 }
             }
         }
-    }
-
-    private var pluginColor: Color {
-        return .purple
-    }
-
-    private var pluginIcon: String {
-        return "waveform"
     }
 
     private func formatFileSize(_ size: Int64) -> String {

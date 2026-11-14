@@ -17,13 +17,47 @@ struct AppSearchView: View {
     @AppStorage("settings.general.selectedSortAppsList") var selectedSortOption: SortOption =
         .alphabetical
     @AppStorage("settings.interface.animationEnabled") private var animationEnabled: Bool = true
-    @AppStorage("settings.interface.multiSelect") private var multiSelect: Bool = false
-    @AppStorage("settings.general.sidebarWidth") private var sidebarWidth: Double = 265
-    @State private var dimensionStart: Double?
 
     var body: some View {
 
-        VStack(alignment: .center, spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
+            PageHeaderView(
+                title: "Apps",
+                description: "Browse and clean installed applications"
+            ) {
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.easeInOut(duration: animationEnabled ? 0.3 : 0)) {
+                            appState.isGridMode = false
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "List View", systemImage: appState.isGridMode ? "list.bullet.circle" : "list.bullet.circle.fill")
+                    }
+                    .help("List View")
+
+                    Button {
+                        withAnimation(.easeInOut(duration: animationEnabled ? 0.3 : 0)) {
+                            appState.isGridMode = true
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Grid View", systemImage: appState.isGridMode ? "square.grid.2x2.fill" : "square.grid.2x2")
+                    }
+                    .help("Grid View")
+
+                    Button {
+                        Task { @MainActor in
+                            withAnimation(Animation.easeInOut(duration: animationEnabled ? 0.35 : 0)) {
+                                loadApps(folderPaths: fsm.folderPaths)
+                            }
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Refresh List", systemImage: "arrow.counterclockwise")
+                    }
+                    .help("Refresh app list")
+
+                }
+            }
+
             if appState.sortedApps.isEmpty {
                 VStack {
                     Spacer()
@@ -34,16 +68,18 @@ struct AppSearchView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-
                 SearchBarSidebar(search: $search)
-                    .padding()
-                    .padding(.top, 20)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 5)
+                    .padding(.bottom, 16)
 
                 if !filteredApps.isEmpty {
                     AppsListView(
                         search: $search, filteredApps: filteredApps, isGridMode: appState.isGridMode
                     )
-                    .padding([.bottom, .horizontal], 5)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 5)
                 } else {
                     VStack {
                         Spacer()
@@ -58,85 +94,7 @@ struct AppSearchView: View {
 
             }
         }
-        .onAppear {
-            // Initialize grid mode based on current sidebar width
-            appState.isGridMode = sidebarWidth > 316
-        }
-        .onChange(of: sidebarWidth) { newWidth in
-            // Update grid mode when sidebar width changes programmatically
-            let newGridMode = newWidth > 316
-            if newGridMode != appState.isGridMode {
-                withAnimation(.easeInOut(duration: animationEnabled ? 0.3 : 0)) {
-                    appState.isGridMode = newGridMode
-                }
-            }
-        }
-
-        .overlay(alignment: .trailing) {
-            // Invisible resize handle on the trailing edge
-            Rectangle()
-                .fill(Color.clear)
-                .frame(width: 10)
-                .contentShape(Rectangle())
-                .offset(x: 5)  // Center on the edge
-                .onHover { inside in
-                    if inside {
-                        NSCursor.resizeLeftRight.push()
-                    } else {
-                        NSCursor.pop()
-                    }
-                }
-                .contextMenu {
-                    Button("Reset Size") {
-                        sidebarWidth = 265
-                        appState.isGridMode = false
-                    }
-                }
-                .gesture(sidebarDragGesture)
-                .help("Right click to reset size")
-        }
-
-    }
-
-    private var sidebarDragGesture: some Gesture {
-        DragGesture(minimumDistance: 5, coordinateSpace: .global)
-            .onChanged { val in
-                if dimensionStart == nil {
-                    dimensionStart = sidebarWidth
-                }
-                let delta = val.location.x - val.startLocation.x
-                let newDimension = dimensionStart! + Double(delta)
-
-                // Calculate dynamic max width based on available items
-                let filteredUserApps = filteredApps.filter { !$0.system }
-                let filteredSystemApps = filteredApps.filter { $0.system }
-                let maxItemsInSection = max(filteredUserApps.count, filteredSystemApps.count)
-                let optimalColumns = min(5, max(1, maxItemsInSection))
-
-                // Calculate ideal width for optimal columns (item width + spacing + padding)
-                let idealMaxWidth = Double(optimalColumns * 120 + (optimalColumns - 1) * 5 + 50)
-
-                // Extended range with dynamic max, but always allow grid mode at 316+
-                let minWidth: Double = 240
-                let maxWidth: Double = max(400, min(640, idealMaxWidth)) // Always allow at least 400px for grid mode
-                let newWidth = max(minWidth, min(maxWidth, newDimension))
-
-                sidebarWidth = newWidth
-
-                // Toggle grid mode at 316px threshold (around 3 columns)
-                let newGridMode = newWidth > 316
-                if newGridMode != appState.isGridMode {
-                    withAnimation(.easeInOut(duration: animationEnabled ? 0.3 : 0)) {
-                        appState.isGridMode = newGridMode
-                    }
-                }
-
-                NSCursor.closedHand.set()
-            }
-            .onEnded { val in
-                dimensionStart = nil
-                NSCursor.arrow.set()
-            }
+        .pikoToolbarBackground()
     }
 
     private var filteredApps: [AppInfo] {

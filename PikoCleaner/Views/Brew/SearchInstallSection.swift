@@ -34,8 +34,9 @@ struct SearchInstallSection: View {
     @State private var searchType: HomebrewSearchType = .installed
     @State private var installedCollapsedCategories: Set<String> = []
     @State private var availableCollapsedCategories: Set<String> = []
-    @State private var updatingPackages: Set<String> = []
     @State private var isUpdatingAll: Bool = false
+    @State private var upgradeProgressMessage = "Starting Homebrew upgrade…"
+    @State private var upgradeOutputBuffer = ""
     @AppStorage("settings.interface.scrollIndicators") private var scrollIndicators: Bool = false
     @AppStorage("settings.interface.animationEnabled") private var animationEnabled: Bool = true
     @AppStorage("settings.brew.showOnlyInstalledOnRequest") private var showOnlyInstalledOnRequest: Bool = false
@@ -75,38 +76,52 @@ struct SearchInstallSection: View {
         }
     }
 
-    private func updateAllOutdated(packages: [HomebrewSearchResult]) {
+    private func updateAllOutdated() {
         Task { @MainActor in
+            guard !isUpdatingAll else { return }
             isUpdatingAll = true
-            defer { isUpdatingAll = false }
+            upgradeProgressMessage = "Starting Homebrew upgrade…"
+            upgradeOutputBuffer = ""
 
-            var updatedPackageNames: [String] = []
-
-            for package in packages {
-                printOS("Starting update for: \(package.name)")
-                updatingPackages.insert(package.name)
-
-                do {
-                    try await HomebrewController.shared.upgradePackage(name: package.name)
-                    printOS("Successfully updated: \(package.name)")
-                    updatedPackageNames.append(package.name)
-
-                    // Remove from outdated map and category immediately
-                    let shortName = package.name.components(separatedBy: "/").last ?? package.name
-                    brewManager.outdatedPackagesMap.removeValue(forKey: package.name)
-                    brewManager.outdatedPackagesMap.removeValue(forKey: shortName)
-                    brewManager.installedByCategory[.outdated]?.removeAll { $0.name == package.name || $0.name == shortName }
-                } catch {
-                    printOS("Error updating package \(package.name): \(error)")
+            do {
+                try await HomebrewController.shared.upgradeAllPackages { output in
+                    updateUpgradeProgress(with: output)
                 }
-
-                updatingPackages.remove(package.name)
-                printOS("Finished update for: \(package.name)")
+                GlobalConsoleManager.shared.appendOutput(
+                    "✓ Homebrew upgraded all outdated packages\n",
+                    source: CurrentPage.homebrew.title
+                )
+            } catch {
+                printOS("Error upgrading all Homebrew packages: \(error)")
             }
 
-            printOS("All updates complete. Refreshing updated packages...")
-            // Targeted refresh - only update the packages that were upgraded (much faster than full scan)
-            await brewManager.refreshSpecificPackages(updatedPackageNames)
+            await brewManager.loadInstalledPackages()
+            let folderPaths = FolderSettingsManager.shared.folderPaths
+            flushBundleCaches(for: AppState.shared.sortedApps)
+            await loadAppsAsync(folderPaths: folderPaths, useStreaming: false)
+            brewManager.updateInstalledCategories()
+            isUpdatingAll = false
+        }
+    }
+
+    private func updateUpgradeProgress(with output: String) {
+        let lines = (upgradeOutputBuffer + output).components(separatedBy: .newlines)
+        upgradeOutputBuffer = lines.last ?? ""
+
+        for line in lines.dropLast() {
+            let cleanLine = line
+                .replacingOccurrences(
+                    of: "\u{001B}\\[[0-?]*[ -/]*[@-~]",
+                    with: "",
+                    options: .regularExpression
+                )
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !cleanLine.isEmpty else { continue }
+            upgradeProgressMessage = String(cleanLine.suffix(120))
+        }
+
+        if upgradeOutputBuffer.count > 4096 {
+            upgradeOutputBuffer = String(upgradeOutputBuffer.suffix(4096))
         }
     }
 
@@ -233,7 +248,7 @@ struct SearchInstallSection: View {
                             .frame(maxWidth: .infinity)
                         } else {
                             ScrollView {
-                                LazyVStack(spacing: 8) {
+                                LazyVStack(spacing: 0) {
                                     if searchType == .installed {
                                         // Show categorized view for installed packages (matches Updater view pattern)
                                         // Outdated category
@@ -257,10 +272,9 @@ struct SearchInstallSection: View {
                                                 },
                                                 isFirst: true,
                                                 onPackageSelected: onPackageSelected,
-                                                updatingPackages: updatingPackages,
                                                 brewManager: brewManager,
-                                                onUpdateAll: filteredOutdated.count > 1 ? {
-                                                    updateAllOutdated(packages: filteredOutdated)
+                                                onUpdateAll: !filteredOutdated.isEmpty ? {
+                                                    updateAllOutdated()
                                                 } : nil,
                                                 colorScheme: colorScheme,
                                                 showOnlyInstalledOnRequest: $showOnlyInstalledOnRequest,
@@ -288,7 +302,6 @@ struct SearchInstallSection: View {
                                             },
                                             isFirst: !isOutdatedVisible,
                                             onPackageSelected: onPackageSelected,
-                                            updatingPackages: updatingPackages,
                                             brewManager: brewManager,
                                             onUpdateAll: nil,
                                             colorScheme: colorScheme,
@@ -313,7 +326,6 @@ struct SearchInstallSection: View {
                                             },
                                             isFirst: false,
                                             onPackageSelected: onPackageSelected,
-                                            updatingPackages: updatingPackages,
                                             brewManager: brewManager,
                                             onUpdateAll: nil,
                                             colorScheme: colorScheme,
@@ -338,7 +350,6 @@ struct SearchInstallSection: View {
                                                 },
                                                 isFirst: true,
                                                 onPackageSelected: onPackageSelected,
-                                                updatingPackages: updatingPackages,
                                                 brewManager: brewManager,
                                                 colorScheme: colorScheme
                                             )
@@ -360,7 +371,6 @@ struct SearchInstallSection: View {
                                                 },
                                                 isFirst: false,
                                                 onPackageSelected: onPackageSelected,
-                                                updatingPackages: updatingPackages,
                                                 brewManager: brewManager,
                                                 colorScheme: colorScheme
                                             )
@@ -413,6 +423,43 @@ struct SearchInstallSection: View {
             resultsCountBar
             listContent
         }
+        .overlay {
+            if isUpdatingAll {
+                ZStack {
+                    Rectangle()
+                        .fill(ThemeColors.shared(for: colorScheme).primaryBG)
+
+                    VStack(spacing: 14) {
+                        ProgressView()
+                            .controlSize(.large)
+                        Text(upgradeProgressMessage)
+                            .font(.callout)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .frame(maxWidth: 360)
+                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+
+                        Button {
+                            HomebrewController.shared.cancelOperation()
+                        } label: {
+                            Label("Cancel Upgrade", systemImage: "xmark")
+                        }
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: ThemeColors.shared(for: colorScheme).secondaryText,
+                            shape: Capsule(style: .continuous),
+                            level: .secondary,
+                            verticalPadding: 8,
+                            horizontalPadding: 12,
+                            skipControlGroup: true
+                        ))
+                        .controlGroup(Capsule(style: .continuous), level: .secondary)
+                    }
+                    .padding(24)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .contentShape(Rectangle())
+            }
+        }
     }
 }
 
@@ -422,12 +469,11 @@ struct SearchResultRowView: View {
     let result: HomebrewSearchResult
     let isCask: Bool
     let onInfoTapped: () -> Void
-    let updatingPackages: Set<String>
     @EnvironmentObject var brewManager: HomebrewManager
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("settings.general.confirmAlert") private var confirmAlert: Bool = false
-    @State private var isHovered: Bool = false
     @State private var isInstalling: Bool = false
+    @State private var isUpdating: Bool = false
     @State private var isUninstalling: Bool = false
     @State private var showInstallAlert: Bool = false
     @State private var showUpdateAlert: Bool = false
@@ -471,37 +517,6 @@ struct SearchResultRowView: View {
 
         // Check if package is pinned in installed formulae
         return brewManager.installedFormulae.first(where: { $0.name == result.name || $0.name == shortName })?.isPinned ?? false
-    }
-
-    private var appIcon: NSImage? {
-        guard isCask else { return nil }
-
-        let shortName = result.name.components(separatedBy: "/").last ?? result.name
-
-        // Try 1: Find matching app in AppState.shared.sortedApps by cask name (preferred)
-        if let app = AppState.shared.sortedApps.first(where: { appInfo in
-            appInfo.cask == result.name || appInfo.cask == shortName
-        }) {
-            return app.appIcon
-        }
-
-        // Try 2: Fallback - manually fetch icon from likely bundle path
-        // This handles newly installed casks that haven't been added to sortedApps yet
-        let capitalizedName = shortName.prefix(1).uppercased() + shortName.dropFirst()
-        let possiblePaths = [
-            URL(fileURLWithPath: "/Applications/\(capitalizedName).app"),
-            URL(fileURLWithPath: "/Applications/\(shortName).app"),
-            URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Applications/\(capitalizedName).app"),
-            URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Applications/\(shortName).app")
-        ]
-
-        for path in possiblePaths where FileManager.default.fileExists(atPath: path.path) {
-            if let icon = AppInfoUtils.fetchAppIcon(for: path, wrapped: false) {
-                return icon
-            }
-        }
-
-        return nil
     }
 
     private var displayedName: String {
@@ -560,11 +575,11 @@ struct SearchResultRowView: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        if isInstalling || updatingPackages.contains(result.name) {
+        if isInstalling || isUpdating {
             HStack(spacing: 6) {
                 ProgressView()
                     .scaleEffect(0.8)
-                Text("Installing...")
+                Text(isUpdating ? "Updating..." : "Installing...")
                     .font(.caption)
                     .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
             }
@@ -577,48 +592,86 @@ struct SearchResultRowView: View {
                     .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
             }
         } else if isOutdated {
-            HStack(spacing: 8) {
-                Button(isPinned ? "Update (Pinned)" : "Update") {
+            HStack(spacing: 0) {
+                Button {
                     if confirmAlert {
                         showUpdateAlert = true
                     } else {
                         performUpdate()
                     }
+                } label: {
+                    Label(isPinned ? "Update (Pinned)" : "Update", systemImage: "arrow.clockwise")
+                        .font(.callout)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.orange)
+                .buttonStyle(ControlGroupButtonStyle(
+                    foregroundColor: ThemeColors.shared(for: colorScheme).accent,
+                    shape: Capsule(style: .continuous),
+                    level: .primary,
+                    verticalPadding: 8,
+                    horizontalPadding: 12,
+                    skipControlGroup: true
+                ))
 
-                Button("Uninstall") {
+                Button {
                     if confirmAlert {
                         showUninstallAlert = true
                     } else {
                         performUninstall()
                     }
+                } label: {
+                    Label("Uninstall", systemImage: "trash")
+                        .font(.callout)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.red)
+                .buttonStyle(ControlGroupButtonStyle(
+                    foregroundColor: .red,
+                    shape: Capsule(style: .continuous),
+                    level: .primary,
+                    verticalPadding: 8,
+                    horizontalPadding: 12,
+                    skipControlGroup: true
+                ))
             }
-            .frame(alignment: .trailing)
+            .controlGroup(Capsule(style: .continuous), level: .primary)
         } else if isAlreadyInstalled {
-            Button("Uninstall") {
+            Button {
                 if confirmAlert {
                     showUninstallAlert = true
                 } else {
                     performUninstall()
                 }
+            } label: {
+                Label("Uninstall", systemImage: "trash")
+                    .font(.callout)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.red)
+            .buttonStyle(ControlGroupButtonStyle(
+                foregroundColor: .red,
+                shape: Capsule(style: .continuous),
+                level: .primary,
+                verticalPadding: 8,
+                horizontalPadding: 12,
+                skipControlGroup: true
+            ))
+            .controlGroup(Capsule(style: .continuous), level: .primary)
         } else {
-            Button("Install") {
+            Button {
                 if confirmAlert {
                     showInstallAlert = true
                 } else {
                     performInstall()
                 }
+            } label: {
+                Label("Install", systemImage: "plus")
+                    .font(.callout)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
+            .buttonStyle(ControlGroupButtonStyle(
+                foregroundColor: ThemeColors.shared(for: colorScheme).accent,
+                shape: Capsule(style: .continuous),
+                level: .primary,
+                verticalPadding: 8,
+                horizontalPadding: 12,
+                skipControlGroup: true
+            ))
+            .controlGroup(Capsule(style: .continuous), level: .primary)
         }
     }
 
@@ -690,70 +743,35 @@ struct SearchResultRowView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            // Package icon
-            if let icon = appIcon {
-                // Show actual app icon for casks
-                Image(nsImage: icon)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 40, height: 40)
-            } else {
-                // Fallback to SF Symbol
-                ZStack {
-                    Circle()
-                        .fill((isCask ? Color.purple : Color.green).opacity(0.2))
-                        .frame(width: 40, height: 40)
-
-                    Image(systemName: isCask ? "macwindow" : "terminal")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(isCask ? .purple : .green)
-                }
-            }
+        HStack(alignment: .center, spacing: PageListMetrics.itemSpacing) {
+            HomebrewPackageIcon(isCask: isCask)
 
             // Package name and description
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
                     Text(displayedName)
-                        .font(.headline)
+                        .font(.title3)
                         .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
 
-                    // Show version if available
-                    if let version = result.version {
-                        if isAlreadyInstalled {
-                            // Installed package - check if outdated and show update arrow
-                            if let versions = brewManager.getOutdatedVersions(for: result.name) {
-                                // Match Updater view color scheme: orange (outdated) → green (new)
-                                (Text(verbatim: "(")
-                                    .foregroundColor(ThemeColors.shared(for: colorScheme).secondaryText) +
-                                Text(verbatim: versions.installed)
-                                    .foregroundColor(.orange) +
-                                Text(verbatim: " → ")
-                                    .foregroundColor(ThemeColors.shared(for: colorScheme).secondaryText) +
-                                Text(verbatim: versions.available)
-                                    .foregroundColor(.green) +
-                                Text(verbatim: ")")
-                                    .foregroundColor(ThemeColors.shared(for: colorScheme).secondaryText))
-                                    .font(.footnote)
-                            } else {
-                                Text(verbatim: "(\(version.stripBrewRevisionSuffix()))")
-                                    .font(.footnote)
-                                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                            }
-                        } else {
-                            // Not installed - show available version
-                            Text(verbatim: "(\(version.stripBrewRevisionSuffix()))")
-                                .font(.footnote)
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText.opacity(0.8))
-                        }
+                    if isAlreadyInstalled,
+                       let versions = brewManager.getOutdatedVersions(for: result.name) {
+                        PackageVersionComparison(versions: versions)
+                    } else if let version = result.version {
+                        Text(version.stripBrewRevisionSuffix())
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                     }
                 }
 
                 if let description = result.description {
                     Text(description)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                        .lineLimit(2)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
             }
 
@@ -784,19 +802,7 @@ struct SearchResultRowView: View {
 
 
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isHovered ?
-                    ThemeColors.shared(for: colorScheme).secondaryBG.opacity(0.8) :
-                    ThemeColors.shared(for: colorScheme).secondaryBG
-                )
-        )
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isHovered = hovering
-            }
-        }
+        .padding(.vertical, PageListMetrics.rowVerticalInset)
         .onAppear {
             // Fallback: If package is installed but has 0 size, calculate directly from disk
             // Note: Casks are handled by .task modifier via calculateSize() → calculateCaskSize()
@@ -934,6 +940,32 @@ struct SearchResultRowView: View {
         }
     }
 
+    private struct PackageVersionComparison: View {
+        let versions: OutdatedVersionInfo
+        @Environment(\.colorScheme) private var colorScheme
+
+        var body: some View {
+            HStack(spacing: 5) {
+                Text(versions.installed)
+                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                Text(versions.available)
+                    .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
+            }
+            .font(.caption.monospacedDigit())
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(ThemeColors.shared(for: colorScheme).secondaryBG)
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Installed version \(versions.installed), available version \(versions.available)")
+        }
+    }
+
     // MARK: - Helper Functions
 
     private func performInstall() {
@@ -959,8 +991,8 @@ struct SearchResultRowView: View {
 
     private func performUpdate() {
         Task {
-            await MainActor.run { isInstalling = true }
-            defer { Task { @MainActor in isInstalling = false } }
+            await MainActor.run { isUpdating = true }
+            defer { Task { @MainActor in isUpdating = false } }
 
             do {
                 // Check if formula is pinned before updating
@@ -2698,7 +2730,6 @@ struct InstalledCategoryView: View {
     let onToggle: () -> Void
     let isFirst: Bool
     let onPackageSelected: (HomebrewSearchResult, Bool) -> Void
-    let updatingPackages: Set<String>
     let brewManager: HomebrewManager
     let onUpdateAll: (() -> Void)?
     let colorScheme: ColorScheme
@@ -2786,16 +2817,23 @@ struct InstalledCategoryView: View {
                     .buttonStyle(.plain)
                     .help("Sort by \(sortOption.rawValue)")
 
-                    // Show "Update All" button if provided
+                    // Show the bulk upgrade action for the outdated category
                     if let onUpdateAll = onUpdateAll {
                         Button {
                             onUpdateAll()
                         } label: {
-                            Text("Update All")
-                                .font(.caption)
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).accent)
+                            Label("Upgrade All", systemImage: "arrow.up.circle")
+                                .font(.callout)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(ControlGroupButtonStyle(
+                            foregroundColor: ThemeColors.shared(for: colorScheme).accent,
+                            shape: Capsule(style: .continuous),
+                            level: .primary,
+                            verticalPadding: 8,
+                            horizontalPadding: 12,
+                            skipControlGroup: true
+                        ))
+                        .controlGroup(Capsule(style: .continuous), level: .primary)
                     }
                 }
             }
@@ -2805,8 +2843,8 @@ struct InstalledCategoryView: View {
 
             // Packages in category (only if not collapsed)
             if !collapsed {
-                LazyVStack(spacing: 8) {
-                    ForEach(sortedPackages) { result in
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(sortedPackages.enumerated()), id: \.offset) { index, result in
                         SearchResultRowView(
                             result: result,
                             isCask: brewManager.installedCasks.contains(where: { $0.name == result.name }),
@@ -2814,8 +2852,11 @@ struct InstalledCategoryView: View {
                                 let isCask = brewManager.installedCasks.contains(where: { $0.name == result.name })
                                 onPackageSelected(result, isCask)
                             },
-                            updatingPackages: updatingPackages
                         )
+
+                        if index < sortedPackages.count - 1 {
+                            Divider()
+                        }
                     }
                 }
             }
@@ -2831,7 +2872,6 @@ struct AvailableCategoryView: View {
     let onToggle: () -> Void
     let isFirst: Bool
     let onPackageSelected: (HomebrewSearchResult, Bool) -> Void
-    let updatingPackages: Set<String>
     let brewManager: HomebrewManager
     let colorScheme: ColorScheme
 
@@ -2868,16 +2908,19 @@ struct AvailableCategoryView: View {
 
             // Packages in category (only if not collapsed)
             if !collapsed {
-                LazyVStack(spacing: 8) {
-                    ForEach(packages) { result in
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(packages.enumerated()), id: \.offset) { index, result in
                         SearchResultRowView(
                             result: result,
                             isCask: category == .casks,
                             onInfoTapped: {
                                 onPackageSelected(result, category == .casks)
                             },
-                            updatingPackages: updatingPackages
                         )
+
+                        if index < packages.count - 1 {
+                            Divider()
+                        }
                     }
                 }
             }

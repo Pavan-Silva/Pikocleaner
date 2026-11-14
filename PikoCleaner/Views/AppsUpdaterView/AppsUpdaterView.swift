@@ -20,7 +20,7 @@ struct AppsUpdaterView: View {
     @AppStorage("settings.interface.animationEnabled") private var animationEnabled: Bool = true
     @AppStorage("settings.updater.sources") private var sourcesData: Data = UpdaterSourcesSettings.defaultEncoded()
     @AppStorage("settings.updater.display") private var displayData: Data = UpdaterDisplaySettings.defaultEncoded()
-    @AppStorage("settings.interface.startupView") private var startupView: Int = CurrentPage.applications.rawValue
+    @AppStorage("settings.interface.startupView") private var startupView: Int = CurrentPage.storage.rawValue
 
     // Computed properties for convenient access
     private var sources: UpdaterSourcesSettings {
@@ -81,71 +81,146 @@ struct AppsUpdaterView: View {
     }
 
     var body: some View {
-        ZStack {
-            SidebarDetailLayout {
-                GenericSidebarListView(
-                    items: allUpdateableApps,
-                    categories: sidebarCategories,
-                    searchText: $searchText,
-                    emptyMessage: "No apps to update",
-                    noResultsMessage: "No matching apps",
-                    isLoading: updateManager.isScanning,
-                    loadingMessage: "Loading.."
-                ) { app in
-                    UpdateRowViewSidebar(
-                        app: app,
-                        isSelected: selectedApp?.id == app.id,
-                        onTap: {
-                            if selectedApp?.id == app.id {
-                                // Deselect if tapping the same app
-                                selectedApp = nil
-                            } else {
-                                // Select new app
-                                selectedApp = app
+        VStack(spacing: 0) {
+            PageHeaderView(
+                title: "Updater",
+                description: "Check for app updates from App Store, Homebrew and Sparkle"
+            ) {
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            consoleManager.showConsole.toggle()
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
+                    }
+                    .help("Toggle console output")
+
+                    Button {
+                        selectAllApps()
+                        updateSelectedApps()
+                    } label: {
+                        if updateManager.isUpdatingAll {
+                            CircularProgressView(
+                                progress: updateManager.updateAllProgress,
+                                size: 20,
+                                lineWidth: 3,
+                                badgeText: "\(updateManager.completedAppsCount)/\(updateManager.totalAppsToUpdate)"
+                            )
+                            .accessibilityLabel("Updating apps")
+                        } else {
+                            PageHeaderActionLabel(title: "Update All", systemImage: "arrow.down.circle")
+                                .overlay(alignment: .topTrailing) {
+                                    if updateManager.totalUpdateCount > 0 {
+                                        Text(updateManager.totalUpdateCount > 99 ? "99+" : "\(updateManager.totalUpdateCount)")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 4)
+                                            .background(Capsule().fill(.red))
+                                            .offset(x: 4, y: -4)
+                                    }
+                                }
+                                .padding(.top, 4)
+                                .padding(.trailing, 4)
+                        }
+                    }
+                    .help(updateManager.isUpdatingAll ? "Updating apps..." : "Update all available apps")
+                    .disabled(allUpdateableApps.isEmpty || !updateManager.scanningSources.isEmpty || updateManager.isUpdatingAll)
+
+                    if updateManager.isScanning {
+                        Button {
+                            updateManager.cancelScan()
+                        } label: {
+                            PageHeaderActionLabel(title: "Stop checking for updates", systemImage: "stop.circle")
+                        }
+                        .help("Stop checking for updates")
+                    } else {
+                        Button {
+                            GlobalConsoleManager.shared.appendOutput("Refreshing app updates...\n", source: CurrentPage.updater.title)
+                            Task {
+                                let task = Task { await updateManager.scanIfNeeded(forceReload: true) }
+                                updateManager.currentScanTask = task
+                                await task.value
+                                GlobalConsoleManager.shared.appendOutput("✓ Completed update scan\n", source: CurrentPage.updater.title)
                             }
+                        } label: {
+                            PageHeaderActionLabel(title: "Refresh", systemImage: "arrow.counterclockwise")
+                        }
+                        .help("Scan for app updates")
+                    }
+
+                    Button {
+                        hiddenSidebar.toggle()
+                    } label: {
+                        PageHeaderActionLabel(title: "Show hidden updates", systemImage: "sidebar.trailing")
+                    }
+                    .help("Show hidden updates")
+                }
+            }
+
+            ZStack {
+                SidebarDetailLayout {
+                    GenericSidebarListView(
+                        items: allUpdateableApps,
+                        categories: sidebarCategories,
+                        searchText: $searchText,
+                        emptyMessage: "No apps to update",
+                        noResultsMessage: "No matching apps",
+                        isLoading: updateManager.isScanning,
+                        loadingMessage: "Loading.."
+                    ) { app in
+                        UpdateRowViewSidebar(
+                            app: app,
+                            isSelected: selectedApp?.id == app.id,
+                            onTap: {
+                                if selectedApp?.id == app.id {
+                                    selectedApp = nil
+                                } else {
+                                    selectedApp = app
+                                }
+                            }
+                        )
+                    }
+                } detail: {
+                    Group {
+                        if let app = selectedApp {
+                            UpdateDetailView(appId: app.id)
+                        } else {
+                            VStack {
+                                Spacer()
+                                Text("Select an app to view details")
+                                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                                    .font(.title2)
+                                Spacer()
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    }
+                }
+                .onChange(of: allUpdateableApps) { newApps in
+                    if let selected = selectedApp,
+                       !newApps.contains(where: { $0.id == selected.id }) {
+                        selectedApp = nil
+                    }
+                }
+                .opacity(hiddenSidebar ? 0.5 : 1)
+
+                UpdaterDetailsSidebar(
+                    hiddenSidebar: $hiddenSidebar,
+                    sources: Binding(
+                        get: { self.sources },
+                        set: { newValue in
+                            self.sourcesData = newValue.encode()
+                        }
+                    ),
+                    display: Binding(
+                        get: { self.display },
+                        set: { newValue in
+                            self.displayData = newValue.encode()
                         }
                     )
-                }
-            } detail: {
-                Group {
-                    if let app = selectedApp {
-                        UpdateDetailView(appId: app.id)
-                    } else {
-                        VStack {
-                            Spacer()
-                            Text("Select an app to view details")
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-                                .font(.title2)
-                            Spacer()
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                }
-            }
-            .onChange(of: allUpdateableApps) { newApps in
-                // Auto-clear selectedApp if it no longer exists in the updates list
-                if let selected = selectedApp,
-                   !newApps.contains(where: { $0.id == selected.id }) {
-                    selectedApp = nil
-                }
-            }
-            .opacity(hiddenSidebar ? 0.5 : 1)
-
-            UpdaterDetailsSidebar(
-                hiddenSidebar: $hiddenSidebar,
-                sources: Binding(
-                    get: { self.sources },
-                    set: { newValue in
-                        self.sourcesData = newValue.encode()
-                    }
-                ),
-                display: Binding(
-                    get: { self.display },
-                    set: { newValue in
-                        self.displayData = newValue.encode()
-                    }
                 )
-            )
+            }
         }
         .animation(animationEnabled ? .spring(response: 0.35, dampingFraction: 0.8) : .none, value: hiddenSidebar)
         .transition(.opacity)
@@ -155,89 +230,6 @@ struct AppsUpdaterView: View {
                 let task = Task { await updateManager.scanIfNeeded(forceReload: true) }
                 updateManager.currentScanTask = task
                 await task.value
-            }
-        }
-        .toolbar {
-//            TahoeToolbarItem(placement: .navigation) {
-//                HStack {
-//                    VStack(alignment: .leading) {
-//                        Text("Updater")
-//                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-//                            .font(.title2)
-//                            .fontWeight(.bold)
-//                        Text("Check for app updates from App Store, Homebrew and Sparkle")
-//                            .font(.callout)
-//                            .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
-//                    }
-//                    BetaBadge()
-//                }
-//            }
-
-            ToolbarItem { Spacer() }
-
-            TahoeToolbarItem(isGroup: true) {
-
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        consoleManager.showConsole.toggle()
-                    }
-                } label: {
-                    Label("Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
-                }
-                .help("Toggle console output")
-
-                Button {
-                    selectAllApps()
-                    updateSelectedApps()
-                } label: {
-                    if updateManager.isUpdatingAll {
-                        // Show circular progress with count during batch update
-                        CircularProgressView(
-                            progress: updateManager.updateAllProgress,
-                            size: 20,
-                            lineWidth: 3,
-                            badgeText: "\(updateManager.completedAppsCount)/\(updateManager.totalAppsToUpdate)"
-                        )
-                    } else {
-                        Label("Update All", systemImage: "arrow.down.circle")
-                            .badge(updateManager.totalUpdateCount)
-                    }
-                }
-                .help(updateManager.isUpdatingAll ? "Updating apps..." : "Update all available apps")
-                .disabled(allUpdateableApps.isEmpty || !updateManager.scanningSources.isEmpty || updateManager.isUpdatingAll)
-
-                if updateManager.isScanning {
-                    // Show stop button during scan
-                    Button {
-                        updateManager.cancelScan()
-                    } label: {
-                        Label("Stop", systemImage: "stop.circle")
-                    }
-                    .help("Stop checking for updates")
-                } else {
-                    // Show refresh button when not scanning
-                    Button {
-                        GlobalConsoleManager.shared.appendOutput("Refreshing app updates...\n", source: CurrentPage.updater.title)
-                        Task {
-                            let task = Task { await updateManager.scanIfNeeded(forceReload: true) }
-                            updateManager.currentScanTask = task
-                            await task.value
-                            GlobalConsoleManager.shared.appendOutput("✓ Completed update scan\n", source: CurrentPage.updater.title)
-                        }
-                    } label: {
-                        Label("Refresh", systemImage: "arrow.counterclockwise")
-                    }
-                    .help("Scan for app updates")
-                }
-
-                Button {
-                    hiddenSidebar.toggle()
-                } label: {
-                    Label("Hidden", systemImage: "sidebar.trailing")
-                }
-                .help("Show hidden updates")
-
-
             }
         }
         .task {
@@ -290,4 +282,3 @@ struct AppsUpdaterView: View {
         }
     }
 }
-

@@ -439,7 +439,6 @@ struct UpdateDetailView: View {
             let primaryAction = ActionButtonItem(
                 title: "Hide \(app.appInfo.appName)",
                 foregroundColor: .red,
-                backgroundColor: ThemeColors.shared(for: colorScheme).secondaryBG,
                 action: {
                     updateManager.hideApp(app, skipVersion: nil)
                 }
@@ -452,7 +451,6 @@ struct UpdateDetailView: View {
                 secondaryActions.append(ActionButtonItem(
                     title: "Adopt",
                     foregroundColor: ThemeColors.shared(for: colorScheme).accent,
-                    backgroundColor: ThemeColors.shared(for: colorScheme).secondaryBG,
                     isDisabled: isLoadingCasks,
                     action: {
                         if brewManager.allAvailableCasks.isEmpty {
@@ -481,7 +479,6 @@ struct UpdateDetailView: View {
             let primaryAction = ActionButtonItem(
                 title: "Hide",
                 foregroundColor: .red,
-                backgroundColor: ThemeColors.shared(for: colorScheme).primaryBG,
                 action: {
                     updateManager.hideApp(app, skipVersion: nil)
                 }
@@ -496,8 +493,7 @@ struct UpdateDetailView: View {
         else {
             let primaryAction = ActionButtonItem(
                 title: app.isIOSApp || isNonPrimaryRegion ? "Update in App Store" : "Update",
-                foregroundColor: .white,
-                backgroundColor: .green,
+                foregroundColor: ThemeColors.shared(for: colorScheme).accent,
                 isDisabled: app.status != .idle,
                 action: {
                     if app.isIOSApp, let appStoreURL = app.appStoreURL {
@@ -522,7 +518,6 @@ struct UpdateDetailView: View {
                 secondaryActions.append(ActionButtonItem(
                     title: "Skip \(displayVersion)",
                     foregroundColor: .orange,
-                    backgroundColor: ThemeColors.shared(for: colorScheme).secondaryBG,
                     action: {
                         updateManager.hideApp(app, skipVersion: availableVersion)
                     }
@@ -533,7 +528,6 @@ struct UpdateDetailView: View {
             secondaryActions.append(ActionButtonItem(
                 title: "Hide",
                 foregroundColor: .red,
-                backgroundColor: ThemeColors.shared(for: colorScheme).secondaryBG,
                 action: {
                     updateManager.hideApp(app, skipVersion: nil)
                 }
@@ -544,7 +538,6 @@ struct UpdateDetailView: View {
                 secondaryActions.append(ActionButtonItem(
                     title: "Adopt",
                     foregroundColor: ThemeColors.shared(for: colorScheme).accent,
-                    backgroundColor: ThemeColors.shared(for: colorScheme).secondaryBG,
                     isDisabled: isLoadingCasks,
                     action: {
                         if brewManager.allAvailableCasks.isEmpty {

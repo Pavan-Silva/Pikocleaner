@@ -75,9 +75,13 @@ struct TapManagementSection: View {
                 .frame(maxWidth: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(brewManager.availableTaps) { tap in
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(brewManager.availableTaps.enumerated()), id: \.offset) { index, tap in
                             TapRowView(tap: tap)
+
+                            if index < brewManager.availableTaps.count - 1 {
+                                Divider()
+                            }
                         }
                     }
                     .padding(.horizontal, 20)
@@ -98,7 +102,6 @@ struct TapRowView: View {
     let tap: HomebrewTapInfo
     @EnvironmentObject var brewManager: HomebrewManager
     @Environment(\.colorScheme) var colorScheme
-    @State private var isHovered: Bool = false
     @State private var isRemoving: Bool = false
     @State private var showRemoveAlert: Bool = false
     @State private var isExpanded: Bool = false
@@ -108,17 +111,12 @@ struct TapRowView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: PageListMetrics.itemSpacing) {
             // Tap icon
-            ZStack {
-                Circle()
-                    .fill((tap.isOfficial ? Color.blue : Color.orange).opacity(0.2))
-                    .frame(width: 40, height: 40)
-
-                Image(systemName: tap.isOfficial ? "mug" : "point.3.filled.connected.trianglepath.dotted")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(tap.isOfficial ? .blue : .orange)
-            }
+            Image(systemName: tap.isOfficial ? "mug.fill" : "point.3.filled.connected.trianglepath.dotted")
+                .font(.system(size: 26, weight: .medium))
+                .foregroundStyle(tap.isOfficial ? .blue : .orange)
+                .frame(width: PageListMetrics.iconSize, height: PageListMetrics.iconSize)
 
             // Tap name and details
             VStack(alignment: .leading, spacing: 4) {
@@ -189,7 +187,7 @@ struct TapRowView: View {
                 .help("Remove tap")
             }
         }
-        .padding()
+        .padding(.vertical, PageListMetrics.rowVerticalInset)
 
             // Expanded packages section
             if isExpanded {
@@ -227,8 +225,12 @@ struct TapRowView: View {
                                     .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                                     .padding(.horizontal)
 
-                                ForEach(tapFormulae, id: \.self) { formulaName in
+                                ForEach(Array(tapFormulae.enumerated()), id: \.offset) { index, formulaName in
                                     TapPackageRowView(tapName: tap.name, packageName: formulaName, isCask: false)
+
+                                    if index < tapFormulae.count - 1 {
+                                        Divider()
+                                    }
                                 }
                             }
 
@@ -241,8 +243,12 @@ struct TapRowView: View {
                                     .padding(.horizontal)
                                     .padding(.top, tapFormulae.isEmpty ? 0 : 8)
 
-                                ForEach(tapCasks, id: \.self) { caskName in
+                                ForEach(Array(tapCasks.enumerated()), id: \.offset) { index, caskName in
                                     TapPackageRowView(tapName: tap.name, packageName: caskName, isCask: true)
+
+                                    if index < tapCasks.count - 1 {
+                                        Divider()
+                                    }
                                 }
                             }
                         }
@@ -250,18 +256,6 @@ struct TapRowView: View {
                     }
                 }
                 .padding(.horizontal)
-            }
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isHovered ?
-                    ThemeColors.shared(for: colorScheme).secondaryBG.opacity(0.8) :
-                    ThemeColors.shared(for: colorScheme).secondaryBG
-                )
-        )
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isHovered = hovering
             }
         }
         .alert("Remove \(tap.name)?", isPresented: $showRemoveAlert) {
@@ -428,7 +422,6 @@ struct TapPackageRowView: View {
     @State private var isUninstalling: Bool = false
     @State private var showInstallAlert: Bool = false
     @State private var showUninstallAlert: Bool = false
-    @State private var isHovered: Bool = false
 
     // Fully-qualified name for installation (e.g., "powershell/tap/powershell")
     private var fullPackageName: String {
@@ -448,24 +441,22 @@ struct TapPackageRowView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
-            // Package icon (smaller)
-            ZStack {
-                Circle()
-                    .fill((isCask ? Color.purple : Color.green).opacity(0.15))
-                    .frame(width: 28, height: 28)
-
-                Image(systemName: isCask ? "shippingbox.fill" : "cube.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(isCask ? .purple : .green)
-            }
+        HStack(alignment: .center, spacing: PageListMetrics.itemSpacing) {
+            HomebrewPackageIcon(isCask: isCask)
 
             // Package info
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(packageName)
-                    .font(.caption)
-                    .fontWeight(.medium)
+                    .font(.title3)
                     .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Text(fullPackageName)
+                    .font(.footnote)
+                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
 
             Spacer()
@@ -530,20 +521,8 @@ struct TapPackageRowView: View {
                 ))
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isHovered ?
-                    ThemeColors.shared(for: colorScheme).secondaryBG.opacity(0.5) :
-                    Color.clear
-                )
-        )
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovered = hovering
-            }
-        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, PageListMetrics.rowVerticalInset)
         .alert("Install \(packageName)?", isPresented: $showInstallAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Install") {

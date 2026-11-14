@@ -138,11 +138,17 @@ struct FileListView: View {
                         Spacer()
 
                         if let lastRefresh = lastRefreshDate {
-                            TimelineView(.periodic(from: lastRefresh, by: 1.0)) { _ in
-                                Text("Updated \(formatRelativeTime(lastRefresh))")
-                                    .font(.caption)
-                                    .monospacedDigit()
-                                    .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
+                            TimelineView(.periodic(from: lastRefresh, by: 60.0)) { timeline in
+                                Group {
+                                    if timeline.date.timeIntervalSince(lastRefresh) < 60 {
+                                        Text("Updated now")
+                                    } else {
+                                        Text("Updated \(formatRelativeTime(lastRefresh))")
+                                    }
+                                }
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundStyle(ThemeColors.shared(for: colorScheme).secondaryText)
                             }
                         }
                     }

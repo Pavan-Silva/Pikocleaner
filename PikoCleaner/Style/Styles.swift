@@ -669,10 +669,10 @@ extension View {
         self.modifier(ifGlassAvailableSidebar())
     }
 
-    /// macOS 27 Golden Gate draws a uniform window toolbar; older releases keep
-    /// the transparent toolbar used by the custom glass chrome.
+    /// macOS 27+ draws a uniform window toolbar with system Liquid Glass.
+    /// Use .hidden to display plain text titles without any glass container.
     func pikoToolbarBackground() -> some View {
-        self.toolbarBackground(ForkInfo.usesGoldenGateChrome ? .automatic : .hidden, for: .windowToolbar)
+        self.toolbarBackground(.hidden, for: .windowToolbar)
     }
 }
 
@@ -738,8 +738,6 @@ struct SimpleSearchStyleSidebar: TextFieldStyle {
     @AppStorage("settings.interface.animationEnabled") private var animationEnabled: Bool = true
     @AppStorage("settings.general.selectedSortAppsList") var selectedSortOption: SortOption =
         .alphabetical
-    @AppStorage("settings.interface.multiSelect") private var multiSelect: Bool = false
-    @AppStorage("settings.general.sidebarWidth") private var sidebarWidth: Double = 265
 
     func _body(configuration: TextField<Self._Label>) -> some View {
 
@@ -783,11 +781,11 @@ struct SimpleSearchStyleSidebar: TextFieldStyle {
                     Section(header: Text("Layout")) {
                         Button(action: {
                             withAnimation(.spring(duration: animationEnabled ? 0.3 : 0)) {
-                                sidebarWidth = 265
+                                appState.isGridMode = false
                             }
                         }) {
                             HStack {
-                                Image(systemName: sidebarWidth < 316 ? "circle.inset.filled" : "circle")
+                                Image(systemName: appState.isGridMode ? "circle" : "circle.inset.filled")
                                 Text("List View")
                             }
 
@@ -795,11 +793,11 @@ struct SimpleSearchStyleSidebar: TextFieldStyle {
 
                         Button(action: {
                             withAnimation(.spring(duration: animationEnabled ? 0.3 : 0)) {
-                                sidebarWidth = 375
+                                appState.isGridMode = true
                             }
                         }) {
                             HStack {
-                                Image(systemName: sidebarWidth > 316 ? "circle.inset.filled" : "circle")
+                                Image(systemName: appState.isGridMode ? "circle.inset.filled" : "circle")
                                 Text("Grid View")
                             }
 
@@ -816,11 +814,6 @@ struct SimpleSearchStyleSidebar: TextFieldStyle {
                             }
                         }
 
-                        Button(multiSelect ? "Hide multi-select" : "Show multi-select") {
-                            withAnimation(Animation.easeInOut(duration: animationEnabled ? 0.35 : 0)) {
-                                multiSelect.toggle()
-                            }
-                        }
                     }
                 } label: {
                     Image(systemName: "line.3.horizontal")

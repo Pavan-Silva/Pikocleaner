@@ -51,6 +51,7 @@ struct PikoCleanerApp: App {
                 .environmentObject(permissionManager)
 
         }
+        .defaultSize(width: 900, height: 600)
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
         .windowResizability(.contentMinSize)

@@ -268,6 +268,8 @@ struct AppCommands: Commands {
                         NotificationCenter.default.post(name: NSNotification.Name("DaemonViewShouldRefresh"), object: nil)
                     case .updater:
                         NotificationCenter.default.post(name: NSNotification.Name("UpdaterViewShouldRefresh"), object: nil)
+                    case .storage:
+                        appState.loadVolumeInfo()
                     }
                 }
             } label: {

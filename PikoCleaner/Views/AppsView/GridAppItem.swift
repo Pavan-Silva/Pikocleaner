@@ -15,7 +15,6 @@ struct GridAppItem: View {
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("settings.general.glass") private var glass: Bool = true
     @AppStorage("settings.interface.animationEnabled") private var animationEnabled: Bool = true
-    @AppStorage("settings.interface.multiSelect") private var multiSelect: Bool = false
     @EnvironmentObject var locations: Locations
     let itemId = UUID()
     let appInfo: AppInfo
@@ -25,41 +24,6 @@ struct GridAppItem: View {
 
     var body: some View {
         VStack(spacing: 8) {
-
-            if multiSelect {
-                HStack {
-                    Button {
-                        let isChecked = self.appState.externalPaths.contains(self.appInfo.path)
-
-                        if !isChecked {
-                            if !self.appState.externalPaths.contains(self.appInfo.path) {
-                                let wasEmpty = self.appState.externalPaths.isEmpty
-                                self.appState.externalPaths.append(self.appInfo.path)
-
-                                if wasEmpty && appState.currentView != .files {
-                                    appState.multiMode = true
-                                    showAppInFiles(
-                                        appInfo: appInfo, appState: appState,
-                                        locations: locations)
-                                }
-                            }
-                        } else {
-                            self.appState.externalPaths.removeAll {
-                                $0 == self.appInfo.path
-                            }
-
-                            if self.appState.externalPaths.isEmpty {
-                                appState.multiMode = false
-                            }
-                        }
-                    } label: {
-                        EmptyView()
-                    }
-                    .buttonStyle(CircleCheckboxButtonStyle(isSelected: self.appState.externalPaths.contains(self.appInfo.path)))
-
-                    Spacer()
-                }
-            }
 
             Button(action: {
                 if !isSelected {
@@ -90,7 +54,7 @@ struct GridAppItem: View {
                             Image(nsImage: appIcon)
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
-                                .frame(width: 48, height: 48)
+                                .frame(width: 56, height: 56)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .matchedGeometryEffect(
                                     id: "icon-\(appInfo.path.path)", in: appItemNamespace)

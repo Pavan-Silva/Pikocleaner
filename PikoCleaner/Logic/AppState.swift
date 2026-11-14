@@ -80,17 +80,29 @@ class AppState: ObservableObject {
 
     init() {
         // Initialize currentPage from stored startup view preference
-        let storedStartupView = UserDefaults.standard.integer(forKey: "settings.interface.startupView")
+        let startupViewKey = "settings.interface.startupView"
+        let storedStartupView = UserDefaults.standard.integer(forKey: startupViewKey)
+        let defaultStartupPage: CurrentPage = .storage
 
         // Load hidden pages
         let hiddenPages = AppState.loadHiddenPages()
 
-        // Validate: If startup page is hidden, default to .applications
-        if hiddenPages.contains(storedStartupView) {
-            self.currentPage = .applications
-            UserDefaults.standard.set(CurrentPage.applications.rawValue, forKey: "settings.interface.startupView")
+        // Use Storage for first launch, while preserving an explicitly chosen startup page.
+        if UserDefaults.standard.object(forKey: startupViewKey) == nil {
+            let selectedStartupPage = hiddenPages.contains(defaultStartupPage.rawValue)
+                ? CurrentPage.applications
+                : defaultStartupPage
+            self.currentPage = selectedStartupPage
+            UserDefaults.standard.set(selectedStartupPage.rawValue, forKey: startupViewKey)
+        // Validate: If startup page is hidden, fall back to the default page.
+        } else if hiddenPages.contains(storedStartupView) {
+            let selectedStartupPage = hiddenPages.contains(defaultStartupPage.rawValue)
+                ? CurrentPage.applications
+                : defaultStartupPage
+            self.currentPage = selectedStartupPage
+            UserDefaults.standard.set(selectedStartupPage.rawValue, forKey: startupViewKey)
         } else {
-            self.currentPage = CurrentPage(rawValue: storedStartupView) ?? .applications
+            self.currentPage = CurrentPage(rawValue: storedStartupView) ?? defaultStartupPage
         }
 
         self.appInfo = AppInfo(
@@ -686,6 +698,7 @@ enum CurrentPage: Int, CaseIterable, Identifiable {
     case plugins
     case services
     case updater
+    case storage
 
     var id: Int { rawValue }
 
@@ -729,6 +742,8 @@ enum CurrentPage: Int, CaseIterable, Identifiable {
             return (String(localized: "Services"), "gearshape.2")
         case .updater:
             return (String(localized: "Updater"), "arrow.down.circle")
+        case .storage:
+            return (String(localized: "Volumes"), "internaldrive")
         }
     }
 

@@ -308,7 +308,11 @@ class HomebrewController: ObservableObject {
         return ("", "Max retries reached")
     }
 
-    func runBrewCommand(_ arguments: [String]) async throws -> (output: String, error: String) {
+    func runBrewCommand(
+        _ arguments: [String],
+        requireSuccess: Bool = false,
+        onOutput: (@MainActor @Sendable (String) -> Void)? = nil
+    ) async throws -> (output: String, error: String) {
         // Mark operation as running - explicitly trigger SwiftUI update
         await MainActor.run {
             objectWillChange.send()
@@ -334,37 +338,25 @@ class HomebrewController: ObservableObject {
         // Store process reference for cancellation
         await MainActor.run { runningProcess = process }
 
-        try process.run()
-
-        // Read pipes on background thread with console streaming
-        let (outputData, errorData) = await withCheckedContinuation { continuation in
-            Task.detached {
-                var outputData = Data()
-                var errorData = Data()
-
-                let outputHandle = outputPipe.fileHandleForReading
-                let errorHandle = errorPipe.fileHandleForReading
-
-                // Read output with streaming to console
-                while true {
-                    let chunk = outputHandle.availableData
-                    if chunk.isEmpty { break }
-                    outputData.append(chunk)
-
-                    // Stream to console if enabled - check dynamically to support mid-operation console opening
-                    if let text = String(data: chunk, encoding: .utf8) {
-                        await MainActor.run {
-                            GlobalConsoleManager.shared.appendOutput(text, source: CurrentPage.homebrew.title)
-                        }
-                    }
-                }
-
-                // Read error output
-                errorData = errorHandle.readDataToEndOfFile()
-
-                continuation.resume(returning: (outputData, errorData))
+        do {
+            try process.run()
+        } catch {
+            await MainActor.run {
+                objectWillChange.send()
+                isOperationRunning = false
+                runningProcess = nil
             }
+            throw error
         }
+
+        let outputTask = Task.detached {
+            await Self.collectOutput(from: outputPipe, onOutput: onOutput)
+        }
+        let errorTask = Task.detached {
+            await Self.collectOutput(from: errorPipe, onOutput: nil)
+        }
+        let outputData = await outputTask.value
+        let errorData = await errorTask.value
 
         process.waitUntilExit()
 
@@ -378,15 +370,22 @@ class HomebrewController: ObservableObject {
         let output = String(data: outputData, encoding: .utf8) ?? ""
         let error = String(data: errorData, encoding: .utf8) ?? ""
 
+        if requireSuccess && process.terminationStatus != 0 {
+            let details = error.isEmpty ? output : error
+            throw HomebrewError.commandFailed(
+                details.isEmpty
+                    ? "Homebrew command exited with status \(process.terminationStatus)."
+                    : details
+            )
+        }
+
         return (output, error)
     }
 
     /// Cancel the currently running Homebrew operation
     @MainActor func cancelOperation() {
         guard let process = runningProcess else { return }
-        isOperationRunning = false
         process.terminate()
-        runningProcess = nil
     }
 
     // MARK: - Package Loading
@@ -1182,13 +1181,37 @@ class HomebrewController: ObservableObject {
         }
     }
 
-    func upgradeAllPackages() async throws {
-        let arguments = ["upgrade"]
-        let result = try await runBrewCommand(arguments)
+    func upgradeAllPackages(
+        onOutput: (@MainActor @Sendable (String) -> Void)? = nil
+    ) async throws {
+        let result = try await runBrewCommand(["upgrade"], requireSuccess: true, onOutput: onOutput)
 
         if result.error.contains("Error") {
             throw HomebrewError.commandFailed(result.error)
         }
+    }
+
+    private static func collectOutput(
+        from pipe: Pipe,
+        onOutput: (@MainActor @Sendable (String) -> Void)?
+    ) async -> Data {
+        var data = Data()
+        let handle = pipe.fileHandleForReading
+
+        while true {
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else { break }
+            data.append(chunk)
+
+            if let text = String(data: chunk, encoding: .utf8) {
+                await MainActor.run {
+                    GlobalConsoleManager.shared.appendOutput(text, source: CurrentPage.homebrew.title)
+                    onOutput?(text)
+                }
+            }
+        }
+
+        return data
     }
 
     /// Outdated package information with versions

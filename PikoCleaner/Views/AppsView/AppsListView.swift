@@ -86,9 +86,13 @@ struct SectionView: View {
                 }
 
             if showItems {
-                ForEach(apps, id: \.self) { appInfo in
+                ForEach(Array(apps.enumerated()), id: \.element) { index, appInfo in
                     AppListItems(search: $search, appInfo: appInfo)
                         .transition(.opacity)
+
+                    if index < apps.count - 1 {
+                        Divider()
+                    }
                 }
             }
 

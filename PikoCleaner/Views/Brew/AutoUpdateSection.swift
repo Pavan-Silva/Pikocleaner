@@ -231,14 +231,18 @@ struct AutoUpdateSection: View {
                             } else {
                                 Divider()
 
-                                LazyVStack(spacing: 8) {
-                                    ForEach($manager.schedules) { $schedule in
+                                LazyVStack(spacing: 0) {
+                                    ForEach(Array(manager.schedules.enumerated()), id: \.offset) { index, schedule in
                                         ScheduleRow(
-                                            schedule: $schedule,
+                                            schedule: $manager.schedules[index],
                                             isDisabled: !manager.isEnabled,
                                             isInEditMode: manager.isInEditMode(schedule),
                                             isNewSchedule: !manager.originalSchedules.contains(where: { $0.id == schedule.id })
                                         )
+
+                                        if index < manager.schedules.count - 1 {
+                                            Divider()
+                                        }
                                     }
                                 }
                             }
@@ -354,7 +358,7 @@ struct ScheduleRow: View {
                     }
                 }
 
-            // Rest of row - with background
+            // Schedule controls
             HStack(spacing: 5) {
 
                 // Frequency picker
@@ -545,12 +549,7 @@ struct ScheduleRow: View {
                 .help("Delete this schedule")
             }
             .padding(.horizontal, 5)
-            .padding(8)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(ThemeColors.shared(for: colorScheme).primaryBG)
-            )
-            .padding(6)
+            .padding(.vertical, 8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(

@@ -21,9 +21,8 @@ struct InterfaceSettingsTab: View {
     @AppStorage("settings.interface.animationEnabled") private var animationEnabled: Bool = true
     @AppStorage("settings.interface.minimalist") private var minimalEnabled: Bool = true
     @AppStorage("settings.interface.scrollIndicators") private var scrollIndicators: Bool = false
-    @AppStorage("settings.interface.multiSelect") private var multiSelect: Bool = false
     @AppStorage("settings.interface.badgeOverlaysEnabled") private var badgeOverlaysEnabled: Bool = true
-    @AppStorage("settings.interface.startupView") private var startupView: Int = CurrentPage.applications.rawValue
+    @AppStorage("settings.interface.startupView") private var startupView: Int = CurrentPage.storage.rawValue
     @State private var showPagePopover: Bool = false
     @State private var hiddenPages: Set<Int> = AppState.loadHiddenPages()
 
@@ -155,26 +154,6 @@ struct InterfaceSettingsTab: View {
                         }
                         Spacer()
                         Toggle(isOn: $minimalEnabled, label: {
-                        })
-                        .toggleStyle(SettingsToggle())
-                    }
-                    .padding(5)
-
-
-                    HStack(spacing: 0) {
-                        Image(systemName: multiSelect ? "checkmark.square.fill" : "square")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 15, height: 15)
-                            .padding(.trailing)
-                            .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(multiSelect ? String(localized: "Multi-select enabled in sidebar app list") : String(localized: "Multi-select disabled in sidebar app list"))
-                                .font(.callout)
-                                .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
-                        }
-                        Spacer()
-                        Toggle(isOn: $multiSelect, label: {
                         })
                         .toggleStyle(SettingsToggle())
                     }
@@ -314,4 +293,3 @@ struct PageVisibilityPopover: View {
         .padding(.vertical, 8)
     }
 }
-

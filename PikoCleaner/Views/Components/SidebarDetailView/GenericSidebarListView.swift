@@ -73,21 +73,27 @@ struct GenericSidebarListView<Item: Identifiable & Hashable, Content: View>: Vie
             } else {
 
                 SearchBarSidebar(search: $searchText, menu: false)
-                    .padding()
-                    .padding(.top, 20)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 5)
+                    .padding(.bottom, 16)
 
                 CategorizedListView(
                     categories: categorizedItems,
                     itemView: itemView
                 )
                 .padding([.bottom, .horizontal], 5)
+                .padding(.leading, 5)
             }
         }
         .frame(width: sidebarWidth)
-        .ifGlassMain()
         .padding(.leading, ForkInfo.usesGoldenGateChrome ? 0 : 8)
         .padding(.vertical, ForkInfo.usesGoldenGateChrome ? 0 : 8)
         .ignoresSafeArea(edges: .top)
+        .overlay(alignment: .trailing) {
+            Rectangle()
+                .fill(ThemeColors.shared(for: colorScheme).primaryText.opacity(0.12))
+                .frame(width: 1)
+        }
         .overlay(alignment: .trailing) {
             // Invisible resize handle on the trailing edge
             Rectangle()

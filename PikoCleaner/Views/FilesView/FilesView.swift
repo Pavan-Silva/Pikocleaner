@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 
 struct FilesView: View {
+    let onBackToApps: () -> Void
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var fsm: FolderSettingsManager
     @EnvironmentObject var locations: Locations
@@ -47,7 +48,84 @@ struct FilesView: View {
 
         let displaySizeTotal = formatByte(size: appState.appInfo.totalSize).human
 
-        VStack(alignment: .center) {
+        VStack(alignment: .leading, spacing: 0) {
+
+            PageHeaderView(
+                title: appState.appInfo.appName.isEmpty ? "App Files" : appState.appInfo.appName,
+                description: "Manage files for \(appState.appInfo.appName.isEmpty ? "this application" : appState.appInfo.appName)",
+                leadingContent: AnyView(
+                    Button(action: onBackToApps) {
+                        PageHeaderActionLabel(title: "Back to Apps", systemImage: "chevron.backward")
+                    }
+                    .buttonStyle(.plain)
+                    .help("Back to Apps")
+                )
+            ) {
+                HStack(spacing: 0) {
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            consoleManager.showConsole.toggle()
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: "Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
+                    }
+                    .help("Toggle console output")
+
+                    Button {
+                        showPermissionsSheet()
+                    } label: {
+                        PageHeaderActionLabel(title: "Permissions", systemImage: "lock.shield")
+                    }
+                    .help("View TCC permissions for this app")
+
+                    Button {
+                        viewMode = viewMode == .simple ? .categorized : .simple
+                    } label: {
+                        PageHeaderActionLabel(title: "View", systemImage: viewMode == .simple ? "list.bullet" : "checklist")
+                    }
+                    .help(viewMode == .simple ? "Switch to categorized view" : "Switch to simple view")
+
+                    Button {
+                        let allOptions = SortOptionList.allCases
+                        if let currentIndex = allOptions.firstIndex(of: selectedSort) {
+                            let nextIndex = (currentIndex + 1) % allOptions.count
+                            selectedSort = allOptions[nextIndex]
+                            updateSortedFiles()
+                        }
+                    } label: {
+                        PageHeaderActionLabel(title: selectedSort.title, systemImage: selectedSort.systemImage)
+                    }
+                    .help("Sort by \(selectedSort.title). Click to cycle through options")
+
+                    Button {
+                        GlobalConsoleManager.shared.appendOutput("Refreshing files for \(appState.appInfo.appName)...\n", source: CurrentPage.applications.title)
+                        let currentAppInfo = appState.appInfo
+                        updateOnMain {
+                            appState.selectedItems = []
+                        }
+                        withAnimation(Animation.easeInOut(duration: animationEnabled ? 0.35 : 0)) {
+                            showAppInFiles(
+                                appInfo: currentAppInfo, appState: appState,
+                                locations: locations)
+                        }
+                        GlobalConsoleManager.shared.appendOutput("✓ Refreshed files\n", source: CurrentPage.applications.title)
+                    } label: {
+                        PageHeaderActionLabel(title: "Refresh", systemImage: "arrow.counterclockwise")
+                    }
+                    .help("Refresh app files")
+
+                    Button {
+                        if GlobalConsoleManager.shared.showConsole {
+                            GlobalConsoleManager.shared.showConsole.toggle()
+                        }
+                        infoSidebar.toggle()
+                    } label: {
+                        PageHeaderActionLabel(title: "Info", systemImage: "sidebar.trailing")
+                    }
+                    .help("See app details")
+                }
+            }
+
             if appState.showProgress {
                 VStack {
                     Spacer()
@@ -134,78 +212,6 @@ struct FilesView: View {
             }
         }
         .pikoToolbarBackground()
-        .toolbar {
-
-            ToolbarItem { Spacer() }
-
-            TahoeToolbarItem(isGroup: true) {
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        consoleManager.showConsole.toggle()
-                    }
-                } label: {
-                    Label("Console", systemImage: consoleManager.showConsole ? "terminal.fill" : "terminal")
-                }
-                .help("Toggle console output")
-
-                Button {
-                    showPermissionsSheet()
-                } label: {
-                    Label("Permissions", systemImage: "lock.shield")
-                }
-                .help("View TCC permissions for this app")
-
-                Button {
-                    viewMode = viewMode == .simple ? .categorized : .simple
-                } label: {
-                    Label("View", systemImage: viewMode == .simple ? "list.bullet" : "checklist")
-                }
-                .help(viewMode == .simple ? "Switch to categorized view" : "Switch to simple view")
-
-                Button {
-                    // Cycle through sort options
-                    let allOptions = SortOptionList.allCases
-                    if let currentIndex = allOptions.firstIndex(of: selectedSort) {
-                        let nextIndex = (currentIndex + 1) % allOptions.count
-                        selectedSort = allOptions[nextIndex]
-                        updateSortedFiles()
-                    }
-                } label: {
-                    Label(selectedSort.title, systemImage: selectedSort.systemImage)
-                }
-                .help("Sort by \(selectedSort.title). Click to cycle through options")
-
-
-                Button {
-                    GlobalConsoleManager.shared.appendOutput("Refreshing files for \(appState.appInfo.appName)...\n", source: CurrentPage.applications.title)
-                    let currentAppInfo = appState.appInfo
-                    updateOnMain {
-                        appState.selectedItems = []
-                    }
-                    withAnimation(Animation.easeInOut(duration: animationEnabled ? 0.35 : 0)) {
-                        showAppInFiles(
-                            appInfo: currentAppInfo, appState: appState,
-                            locations: locations)
-                    }
-                    GlobalConsoleManager.shared.appendOutput("✓ Refreshed files\n", source: CurrentPage.applications.title)
-                } label: {
-                    Label("Refresh", systemImage: "arrow.counterclockwise")
-                }
-
-                Button {
-                    if GlobalConsoleManager.shared.showConsole {
-                        GlobalConsoleManager.shared.showConsole.toggle()
-                    }
-                    infoSidebar.toggle()
-                } label: {
-                    Label("Info", systemImage: "sidebar.trailing")
-                }
-                .help("See app details")
-            }
-
-
-        }
-
     }
 
     // Function to handle the uninstall action
@@ -574,7 +580,7 @@ struct FileDetailsItem: View {
         let iconImage = fileIcon.flatMap { $0.map(Image.init(nsImage:)) }
         let displaySize = formatByte(size: size).human
 
-        HStack(alignment: .center, spacing: 15) {
+        HStack(alignment: .center, spacing: PageListMetrics.itemSpacing) {
             Button(action: {
                 if !self.path.path.contains(".Trash") {
                     isSelected.toggle()
@@ -589,7 +595,7 @@ struct FileDetailsItem: View {
                 appIcon
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 30, height: 30)
+                    .frame(width: PageListMetrics.iconSize, height: PageListMetrics.iconSize)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
             }
@@ -664,7 +670,7 @@ struct FileDetailsItem: View {
                 .foregroundStyle(ThemeColors.shared(for: colorScheme).primaryText)
 
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, PageListMetrics.rowVerticalInset)
         .contextMenu {
             if path.pathExtension == "app" {
                 Button("Open \(path.deletingPathExtension().lastPathComponent)") {
