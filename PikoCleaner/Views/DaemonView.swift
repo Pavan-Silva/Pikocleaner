@@ -306,9 +306,16 @@ struct DaemonView: View {
         isLoading = true
 
         Task {
-            let items = await loadLaunchItems()
+            let result = await Task.detached(priority: .utility) {
+                Self.loadLaunchItemsSynchronously()
+            }.value
 
             await MainActor.run {
+                if let error = result.error {
+                    GlobalConsoleManager.shared.appendOutput("Error loading launch services: \(error)\n", source: CurrentPage.services.title)
+                }
+
+                let items = result.items
                 self.launchItems = items.sorted { first, second in
                     return first.label.localizedCaseInsensitiveCompare(second.label) == .orderedAscending
                 }
@@ -319,8 +326,9 @@ struct DaemonView: View {
         }
     }
 
-    private func loadLaunchItems() async -> [LaunchItem] {
+    private nonisolated static func loadLaunchItemsSynchronously() -> (items: [LaunchItem], error: String?) {
         var items: [LaunchItem] = []
+        var loadError: String?
 
         // Use launchctl to list all services
         let process = Process()
@@ -332,9 +340,8 @@ struct DaemonView: View {
 
         do {
             try process.run()
-            process.waitUntilExit()
-
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
             if let output = String(data: data, encoding: .utf8) {
                 let lines = output.components(separatedBy: .newlines)
                 // Skip header line
@@ -371,7 +378,7 @@ struct DaemonView: View {
                 }
             }
         } catch {
-            GlobalConsoleManager.shared.appendOutput("Error loading launch services: \(error)\n", source: CurrentPage.services.title)
+            loadError = error.localizedDescription
         }
 
         // Also load from LaunchAgents and LaunchDaemons directories
@@ -382,6 +389,7 @@ struct DaemonView: View {
             "/System/Library/LaunchDaemons",
             NSHomeDirectory() + "/Library/LaunchAgents"
         ]
+        var knownLabels = Set(items.map(\.label))
 
         for path in paths {
             let url = URL(fileURLWithPath: path)
@@ -389,8 +397,7 @@ struct DaemonView: View {
                 while let fileURL = enumerator.nextObject() as? URL {
                     if fileURL.pathExtension == "plist" {
                         let label = fileURL.deletingPathExtension().lastPathComponent
-                        // Skip if already added
-                        if items.contains(where: { $0.label == label }) { continue }
+                        guard knownLabels.insert(label).inserted else { continue }
 
                         var type: LaunchItemType = .agent
                         if path.contains("LaunchDaemons") {
@@ -411,7 +418,7 @@ struct DaemonView: View {
             }
         }
 
-        return items
+        return (items, loadError)
     }
 
     private func formatRelativeTime(_ date: Date) -> String {
@@ -426,7 +433,7 @@ struct DaemonView: View {
     }
 }
 
-struct LaunchItem: Identifiable {
+struct LaunchItem: Identifiable, Sendable {
     let id: String
     let label: String
     let pid: String?
@@ -436,7 +443,7 @@ struct LaunchItem: Identifiable {
     let bundlePath: String?
 }
 
-enum LaunchItemType {
+enum LaunchItemType: Sendable {
     case agent
     case daemon
     case service
