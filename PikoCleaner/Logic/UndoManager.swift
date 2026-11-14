@@ -58,7 +58,9 @@ class FileManagerUndo {
         return true
     }
 
-    func deleteFiles(at urls: [URL], isCLI: Bool = false, bundleName: String? = nil) -> Bool {
+    func deleteFiles(
+        at urls: [URL], isCLI: Bool = false, bundleName: String? = nil, direct: Bool = false
+    ) -> Bool {
         // Filter out invalid/dangerous paths before deletion
         let validURLs = urls.filter { validatePath($0.path) }
 
@@ -134,22 +136,26 @@ class FileManagerUndo {
         let finalCommands = "\(createFolderCommand) ; \(mvCommands)"
         let filePairs = tempFilePairs
 
-        if executeFileCommands(finalCommands, isCLI: isCLI, hasProtectedFiles: hasProtectedFiles) {
-            undoManager.registerUndo(withTarget: self) { target in
-                let result = target.restoreFiles(filePairs: filePairs)
-                if !result {
-                    printOS("Trash Error: Could not restore files.")
+        if executeFileCommands(
+            finalCommands, isCLI: isCLI, hasProtectedFiles: hasProtectedFiles, direct: direct
+        ) {
+            if !direct {
+                undoManager.registerUndo(withTarget: self) { target in
+                    let result = target.restoreFiles(filePairs: filePairs)
+                    if !result {
+                        printOS("Trash Error: Could not restore files.")
+                    }
                 }
-            }
-            undoManager.setActionName("Delete File")
+                undoManager.setActionName("Delete File")
 
-            // Record in persistent history
-            Task { @MainActor in
-                UndoHistoryManager.shared.addRecord(
-                    appName: folderName,
-                    bundleFolderPath: bundleFolderPath,
-                    filePairs: filePairs.map { ($0.originalURL.path, $0.trashURL.path) }
-                )
+                // Record in persistent history
+                Task { @MainActor in
+                    UndoHistoryManager.shared.addRecord(
+                        appName: folderName,
+                        bundleFolderPath: bundleFolderPath,
+                        filePairs: filePairs.map { ($0.originalURL.path, $0.trashURL.path) }
+                    )
+                }
             }
 
             // Play trash sound after successful deletion
@@ -226,7 +232,20 @@ class FileManagerUndo {
     }
 
     // Helper function to perform shell commands based on available privileges
-    private func executeFileCommands(_ commands: String, isCLI: Bool, hasProtectedFiles: Bool, isRestore: Bool = false) -> Bool {
+    private func executeFileCommands(
+        _ commands: String, isCLI: Bool, hasProtectedFiles: Bool, isRestore: Bool = false,
+        direct: Bool = false
+    ) -> Bool {
+        // Self-uninstall moves only user-owned files and must not trigger an
+        // authentication prompt just to run `mv` in the user's own folders.
+        if direct {
+            let result = runDirectShellCommand(command: commands)
+            if !result.0 {
+                printOS(isRestore ? "Restore Error: \(result.1)" : "Trash Error: \(result.1)")
+            }
+            return result.0
+        }
+
         let semaphore = DispatchSemaphore(value: 0)
         var status = false
 
@@ -281,7 +300,13 @@ class FileManagerUndo {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8) ?? ""
 
-        if output.lowercased().contains("permission denied") {
+        let lowercasedOutput = output.lowercased()
+        let failureMarkers = [
+            "permission denied",
+            "operation not permitted",
+            "read-only file system",
+        ]
+        if failureMarkers.contains(where: { lowercasedOutput.contains($0) }) {
             return (false, output)
         }
 

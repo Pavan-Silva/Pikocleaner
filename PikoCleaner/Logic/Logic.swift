@@ -1338,16 +1338,75 @@ func removeApp(appState: AppState, withPath path: URL) async {
 
 // --- PikoCleaner Uninstall ---
 func uninstallPikoCleaner(appState: AppState, locations: Locations) async {
+    let bundleURL = Bundle.main.bundleURL.standardizedFileURL
+    let installDirectory = bundleURL.deletingLastPathComponent()
+
+    // Bail out before touching any service registrations when the app cannot
+    // actually remove itself. Otherwise a failed uninstall leaves the helper,
+    // Sentinel and Finder extension unregistered with the app still installed.
+    if bundleURL.path.contains("/AppTranslocation/") {
+        showCustomAlert(
+            title: "Uninstall Failed",
+            message:
+                "PikoCleaner is running from a temporary location. Move it to the Applications folder and try again.",
+            style: .warning)
+        return
+    }
+
+    guard FileManager.default.isWritableFile(atPath: installDirectory.path) else {
+        showCustomAlert(
+            title: "Uninstall Failed",
+            message:
+                "PikoCleaner cannot remove itself from \(installDirectory.path). Quit PikoCleaner and drag it to the Trash instead.",
+            style: .warning)
+        return
+    }
+
+    guard let appInfo = AppInfoFetcher.getAppInfo(atPath: bundleURL) else {
+        showCustomAlert(
+            title: "Uninstall Failed",
+            message: "Unable to identify the running PikoCleaner application.",
+            style: .warning)
+        return
+    }
+
+    // Locate related files first. If nothing can be found, leave the helper and
+    // login items alone instead of half uninstalling the app.
+    AppPathFinder(
+        appInfo: appInfo, locations: locations, appState: appState,
+        completion: {
+            var selectedItemsArray = Array(appState.selectedItems).filter {
+                !$0.path.contains(".Trash")
+            }
+
+            // The running bundle is always part of the uninstall, even if the
+            // path scan somehow missed it.
+            if !selectedItemsArray.contains(where: {
+                $0.standardizedFileURL.path == bundleURL.path
+            }) {
+                selectedItemsArray.insert(bundleURL, at: 0)
+            }
+
+            if selectedItemsArray.count == 1 {
+                printOS("Uninstall: No related files were found, removing only the app bundle.")
+            }
+
+            Task {
+                await finishPikoCleanerUninstall(items: selectedItemsArray)
+            }
+        }
+    ).findPaths()
+}
+
+private func finishPikoCleanerUninstall(items: [URL]) async {
+    // Clear privileged leftovers while the helper is still registered so no
+    // authorization prompt is needed.
+    await removeLegacyHelperArtifacts()
+    await removeCLISymlink()
+
+    // The daemon must be unregistered before its host bundle is moved.
     do {
         try await HelperToolManager.shared.unregisterForSelfUninstall()
-
-        let sentinel = SMAppService.agent(
-            plistName: "com.pavansilva.PikoCleanerSentinel.plist")
-        if sentinel.status != .notRegistered {
-            try await sentinel.unregister()
-        }
-
-        try unregisterFinderPluginForSelfUninstall()
     } catch {
         showCustomAlert(
             title: "Uninstall Failed",
@@ -1356,69 +1415,121 @@ func uninstallPikoCleaner(appState: AppState, locations: Locations) async {
         return
     }
 
-    guard let appInfo = AppInfoFetcher.getAppInfo(atPath: Bundle.main.bundleURL) else {
-        showCustomAlert(
-            title: "Uninstall Failed",
-            message: "Unable to identify the running PikoCleaner application.",
-            style: .warning)
-        return
+    // Login item and Finder extension cleanup is best effort. A failure here
+    // should not stop the app bundle from being removed.
+    do {
+        let sentinel = SMAppService.agent(
+            plistName: "com.pavansilva.PikoCleanerSentinel.plist")
+        if sentinel.status != .notRegistered {
+            try await sentinel.unregister()
+        }
+    } catch {
+        printOS("Uninstall: Failed to unregister Sentinel: \(error.localizedDescription)")
     }
 
-    AppPathFinder(
-        appInfo: appInfo, locations: locations, appState: appState,
-        completion: {
-            var selectedItemsArray = Array(appState.selectedItems).filter {
-                !$0.path.contains(".Trash")
-            }
-            let helperFiles = [
-                "/Library/PrivilegedHelperTools/com.pavansilva.PikoCleaner.PikoCleanerHelper",
-                "/Library/LaunchDaemons/com.pavansilva.PikoCleaner.PikoCleanerHelper.plist",
-            ].map { URL(fileURLWithPath: $0) }
-            for helperFile in helperFiles
-            where FileManager.default.fileExists(atPath: helperFile.path)
-                && !selectedItemsArray.contains(helperFile)
-            {
-                selectedItemsArray.append(helperFile)
-            }
+    if !unregisterFinderPluginForSelfUninstall() {
+        printOS("Uninstall: Failed to unregister the Finder extension.")
+    }
 
-            let result = FileManagerUndo.shared.deleteFiles(at: selectedItemsArray)
+    // Everything left is owned by the user, so move it to the Trash directly.
+    // The privileged wrapper would prompt for an admin password even though no
+    // elevation is required.
+    let result = FileManagerUndo.shared.deleteFiles(
+        at: items, bundleName: ForkInfo.name, direct: true)
 
-            if result {
-                playTrashSound()
-            }
-            exit(result ? 0 : 1)
-        }
-    ).findPaths()
+    if result {
+        exit(0)
+    } else {
+        showCustomAlert(
+            title: "Uninstall Incomplete",
+            message:
+                "Some PikoCleaner files could not be removed. Quit PikoCleaner and drag it from the Applications folder to the Trash.",
+            style: .warning)
+    }
 }
 
-private func unregisterFinderPluginForSelfUninstall() throws {
+/// Removes helper files left behind by older helper tool installs. SMAppService
+/// keeps the daemon inside the app bundle, so these paths normally do not exist.
+private func removeLegacyHelperArtifacts() async {
+    let paths = [
+        "/Library/PrivilegedHelperTools/com.pavansilva.PikoCleaner.PikoCleanerHelper",
+        "/Library/LaunchDaemons/com.pavansilva.PikoCleaner.PikoCleanerHelper.plist",
+    ].filter { FileManager.default.fileExists(atPath: $0) }
+
+    guard !paths.isEmpty else { return }
+
+    let command = "/bin/rm -f " + paths.map { "'\($0)'" }.joined(separator: " ")
+    let result = try? await runSUCommand(
+        command,
+        errorContext: "Failed to remove legacy helper files",
+        throwOnFailure: false)
+
+    if result?.0 != true {
+        printOS("Uninstall: Failed to remove legacy helper files.")
+    }
+}
+
+/// Removes the optional `/usr/local/bin/piko` CLI symlink when it belongs to
+/// PikoCleaner, so it does not dangle after the bundle moves to the Trash.
+private func removeCLISymlink() async {
+    let symlinkPath = "/usr/local/bin/piko"
+    let fileManager = FileManager.default
+
+    // Only touch symlinks that point at PikoCleaner, never a user's own file.
+    let destination = try? fileManager.destinationOfSymbolicLink(atPath: symlinkPath)
+    guard let destination else { return }
+
+    let belongsToApp =
+        destination.contains("Piko Cleaner.app")
+        || destination.contains("PikoCleaner.app")
+        || checkCLISymlink()
+    guard belongsToApp else { return }
+
+    if HelperToolManager.shared.isHelperToolInstalled {
+        let result = await HelperToolManager.shared.runCommand("/bin/rm -f '\(symlinkPath)'")
+        if !result.0 {
+            printOS("Uninstall: Failed to remove CLI symlink: \(result.1)")
+        }
+    } else {
+        do {
+            try fileManager.removeItem(atPath: symlinkPath)
+        } catch {
+            printOS("Uninstall: Failed to remove CLI symlink: \(error.localizedDescription)")
+        }
+    }
+}
+
+@discardableResult
+private func unregisterFinderPluginForSelfUninstall() -> Bool {
     let pluginPath = Bundle.main.bundleURL
         .appendingPathComponent("Contents/PlugIns/FinderOpen.appex").path
     let ignoreTask = Process()
     ignoreTask.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit")
     ignoreTask.arguments = ["-e", "ignore", "-i", "com.pavansilva.PikoCleaner.FinderOpen"]
-    try ignoreTask.run()
+    do {
+        try ignoreTask.run()
+    } catch {
+        printOS("Uninstall: Failed to launch pluginkit: \(error.localizedDescription)")
+        return false
+    }
     ignoreTask.waitUntilExit()
     guard ignoreTask.terminationStatus == 0 else {
-        throw NSError(
-            domain: "PikoCleanerUninstall",
-            code: Int(ignoreTask.terminationStatus),
-            userInfo: [NSLocalizedDescriptionKey: "Could not disable the Finder extension."])
+        return false
     }
 
-    guard FileManager.default.fileExists(atPath: pluginPath) else { return }
+    guard FileManager.default.fileExists(atPath: pluginPath) else { return true }
 
     let removeTask = Process()
     removeTask.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit")
     removeTask.arguments = ["-r", pluginPath]
-    try removeTask.run()
-    removeTask.waitUntilExit()
-    guard removeTask.terminationStatus == 0 else {
-        throw NSError(
-            domain: "PikoCleanerUninstall",
-            code: Int(removeTask.terminationStatus),
-            userInfo: [NSLocalizedDescriptionKey: "Could not unregister the Finder extension."])
+    do {
+        try removeTask.run()
+    } catch {
+        printOS("Uninstall: Failed to launch pluginkit: \(error.localizedDescription)")
+        return false
     }
+    removeTask.waitUntilExit()
+    return removeTask.terminationStatus == 0
 }
 
 // --- Load Plist file with SMAppService ---
