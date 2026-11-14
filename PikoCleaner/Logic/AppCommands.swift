@@ -61,7 +61,9 @@ struct AppCommands: Commands {
                     okText: "Uninstall",
                     style: .warning,
                     onOk: {
-                        uninstallPikoCleaner(appState: appState, locations: locations)
+                        Task {
+                            await uninstallPikoCleaner(appState: appState, locations: locations)
+                        }
                     }
                 )
             } label: {

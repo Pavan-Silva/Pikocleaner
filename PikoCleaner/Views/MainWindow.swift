@@ -144,7 +144,6 @@ struct MainWindow: View {
 
         }
         .background(backgroundView(color: ThemeColors.shared(for: colorScheme).primaryBG))
-        .background(WindowControlInset())
         .frame(minWidth: 900, minHeight: 600)
         .handlesExternalEvents(preferring: Set(arrayLiteral: "piko"), allowing: Set(arrayLiteral: "*"))
         .handleFileDrop(
